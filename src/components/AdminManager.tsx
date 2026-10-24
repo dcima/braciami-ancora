@@ -697,7 +697,7 @@ export const AdminManager: React.FC = () => {
       <div className="flex flex-wrap items-center gap-1.5 pb-1">
         {tabs.map((t) => {
           const Icon = t.icon;
-          const isActive = adminActiveTab === t.tab || adminActiveTab === t.id;
+          const isActive = adminActiveTab === t.id;
           return (
             <button
               key={t.id}

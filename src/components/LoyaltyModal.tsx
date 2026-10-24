@@ -44,7 +44,7 @@ export const LoyaltyModal: React.FC = () => {
   if (!isLoyaltyOpen) return null;
 
   const customerDisplayName =
-    activeCustomer?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Marco Bonora (Cento FE)';
+    activeCustomer?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Cliente Bottega Cento';
 
   const handleInstallToWalletApp = (appName: string) => {
     navigator.clipboard?.writeText(virtualCard.barcodeEan13).catch(() => {});

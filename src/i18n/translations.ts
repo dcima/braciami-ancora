@@ -1,4 +1,5 @@
 import { LanguageCode } from './types';
+export type Language = LanguageCode;
 
 export interface Translations {
   // Navigation & Header

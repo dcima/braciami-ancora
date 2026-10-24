@@ -22,7 +22,7 @@ import {
   AlertCircle,
   Video
 } from 'lucide-react';
-import { SqlCustomer, OtpRequestResult } from '../db/sqlite';
+import { CustomerProfile, OtpRequestResult } from '../types';
 import { useAuth } from '../firebase/AuthContext';
 
 export const OrdersTracker: React.FC = () => {
@@ -40,7 +40,7 @@ export const OrdersTracker: React.FC = () => {
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [step, setStep] = useState<'input_phone' | 'input_otp' | 'authenticated'>('input_phone');
-  const [activeCustomer, setActiveCustomer] = useState<SqlCustomer | null>(null);
+  const [activeCustomer, setActiveCustomer] = useState<CustomerProfile | null>(null);
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
   const [simulatedSmsBanner, setSimulatedSmsBanner] = useState<OtpRequestResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,26 +60,27 @@ export const OrdersTracker: React.FC = () => {
       const targetIdentifier = currentUser?.email || currentUser?.uid || 'google_user';
 
       setActiveCustomer({
-        id: currentUser?.uid || 'GOOG-USER',
-        first_name: currentUser?.displayName?.split(' ')[0] || 'Cliente',
-        last_name: currentUser?.displayName?.split(' ').slice(1).join(' ') || 'Google',
-        full_name: currentUser?.displayName || 'Cliente Google',
+        id: currentUser?.uid || 'FIREBASE-USER',
+        fullName: currentUser?.displayName || profile?.nome || 'Cliente Bottega',
+        first_name: currentUser?.displayName?.split(' ')[0] || profile?.nome || 'Cliente',
+        last_name: currentUser?.displayName?.split(' ').slice(1).join(' ') || profile?.cognome || '',
+        full_name: currentUser?.displayName || profile?.nome || 'Cliente Bottega',
         email: currentUser?.email || '',
-        phone: currentUser?.phoneNumber || '+39 347 0000000',
-        address: 'Via Penzale, 25',
+        phone: profile?.telefono || currentUser?.phoneNumber || '',
+        address: profile?.indirizzo || '',
         city: 'Cento',
-        cap: '44042',
-        province: 'FE',
+        cap: profile?.cap || '44042',
+        province: profile?.provincia || 'FE',
         is_registered: true,
-        payment_method: 'carta_credito',
-        payment_details: '{"type":"Account Google Firebase"}',
-        registered_date: profile?.createdAt?.split('T')[0] || '2026-03-01',
-        total_spent: 120,
-        order_count: 2,
-        last_order_date: '2026-03-18',
-        loyalty_points: profile?.loyaltyPoints || 100,
-        segment: 'Nuovo Cliente',
-        notes: 'Autenticato con Firebase Auth'
+        registeredDate: profile?.createdAt || new Date().toISOString(),
+        totalSpent: profile?.totale_speso || 0,
+        orderCount: profile?.numero_ordini || 0,
+        lastOrderDate: new Date().toISOString(),
+        loyaltyPoints: profile?.punti_fedelta || 0,
+        loyalty_points: profile?.punti_fedelta || 0,
+        segment: (profile?.totale_speso || 0) > 300 ? 'Top Spender' : 'Nuovo Cliente',
+        preferredCut: 'Specialità Bottega Cento',
+        notes: 'Autenticato con Firebase Auth Realtime'
       });
 
       const orders = await fetchCustomerOrders(targetIdentifier);
@@ -133,29 +134,30 @@ export const OrdersTracker: React.FC = () => {
         } else {
           setActiveCustomer({
             id: 'GUEST-CELL',
+            fullName: 'Cliente Bottega Cento',
             first_name: 'Cliente',
             last_name: 'Bottega',
             full_name: 'Cliente Bottega Cento',
             email: phoneOrEmail.includes('@') ? phoneOrEmail : '',
-            phone: phoneOrEmail.includes('@') ? '+39 347 1234567' : phoneOrEmail,
+            phone: phoneOrEmail.includes('@') ? '' : phoneOrEmail,
             address: 'Via Penzale, 25',
             city: 'Cento',
             cap: '44042',
             province: 'FE',
             is_registered: false,
-            payment_method: 'contanti_ritiro',
-            payment_details: '{"type":"Contanti al Ritiro in Bottega"}',
-            registered_date: '2026-03-01',
-            total_spent: 65,
-            order_count: 1,
-            last_order_date: '2026-03-15',
-            loyalty_points: 20,
+            registeredDate: new Date().toISOString(),
+            totalSpent: 0,
+            orderCount: 0,
+            lastOrderDate: new Date().toISOString(),
+            loyaltyPoints: 0,
+            loyalty_points: 0,
             segment: 'Nuovo Cliente',
+            preferredCut: 'Specialità Bottega Cento',
             notes: 'Cliente con verifica OTP'
           });
         }
 
-        // Fetch customer's orders from SQLite
+        // Fetch customer's orders from Firebase Realtime
         const orders = await fetchCustomerOrders(phoneOrEmail);
         setCustomerOrders(orders);
         setStep('authenticated');
@@ -372,7 +374,7 @@ export const OrdersTracker: React.FC = () => {
                   {simulatedSmsBanner.message}
                 </p>
                 <button
-                  onClick={() => setOtpCode(simulatedSmsBanner.code)}
+                  onClick={() => setOtpCode(simulatedSmsBanner.code || '')}
                   className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -449,12 +451,13 @@ export const OrdersTracker: React.FC = () => {
             <div className="bg-stone-900 text-stone-100 rounded-2xl p-6 shadow-md border border-stone-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-stone-950 font-black text-lg shadow-md">
-                  {activeCustomer.first_name[0]}{activeCustomer.last_name[0]}
+                  {(activeCustomer.first_name?.[0] || activeCustomer.fullName?.[0] || 'C')}
+                  {(activeCustomer.last_name?.[0] || activeCustomer.fullName?.split(' ')[1]?.[0] || '')}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="font-display font-bold text-xl text-white">
-                      {activeCustomer.full_name}
+                      {activeCustomer.full_name || activeCustomer.fullName}
                     </h2>
                     {activeCustomer.is_registered && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-[10px] font-bold text-emerald-400 uppercase">
@@ -517,7 +520,7 @@ export const OrdersTracker: React.FC = () => {
                 <div className="space-y-1.5 text-xs text-stone-600">
                   <div className="flex justify-between">
                     <span className="text-stone-400">Intestatario:</span>
-                    <span className="font-semibold text-stone-900">{activeCustomer.full_name}</span>
+                    <span className="font-semibold text-stone-900">{activeCustomer.full_name || activeCustomer.fullName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-stone-400">Codice Fiscale:</span>
@@ -576,13 +579,13 @@ export const OrdersTracker: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex justify-between text-[11px] text-stone-500">
                       <span>Prossimo Buono Spesa (12€)</span>
-                      <span className="font-bold">{(profile?.punti_fedelta || activeCustomer.loyalty_points)} / 150 pt</span>
+                      <span className="font-bold">{(profile?.punti_fedelta ?? activeCustomer.loyalty_points ?? 0)} / 150 pt</span>
                     </div>
                     <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500"
                         style={{
-                          width: `${Math.min(100, Math.round(((profile?.punti_fedelta || activeCustomer.loyalty_points) / 150) * 100))}%`
+                          width: `${Math.min(100, Math.round(((profile?.punti_fedelta ?? activeCustomer.loyalty_points ?? 0) / 150) * 100))}%`
                         }}
                       />
                     </div>
@@ -590,7 +593,7 @@ export const OrdersTracker: React.FC = () => {
 
                   <div className="pt-2 text-[11px] text-stone-600 bg-stone-50 p-2.5 rounded-xl border border-stone-100 flex items-center justify-between">
                     <span>Valore sconto spendibile:</span>
-                    <span className="font-bold text-stone-900">€{Math.floor((profile?.punti_fedelta || activeCustomer.loyalty_points) / 10).toFixed(2)}</span>
+                    <span className="font-bold text-stone-900">€{Math.floor((profile?.punti_fedelta ?? activeCustomer.loyalty_points ?? 0) / 10).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -693,7 +696,7 @@ export const OrdersTracker: React.FC = () => {
                   <Package className="w-12 h-12 text-stone-300 mx-auto" />
                   <h3 className="font-bold text-lg text-stone-800">Nessun ordine trovato</h3>
                   <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                    Non risultano ordini in questo stato per {activeCustomer.full_name}. Ordina subito una delle specialità di Manuel & Samanta!
+                    Non risultano ordini in questo stato per {activeCustomer.full_name || activeCustomer.fullName}. Ordina subito una delle specialità di Manuel & Samanta!
                   </p>
                   <button
                     onClick={() => setActivePage('catalogo')}

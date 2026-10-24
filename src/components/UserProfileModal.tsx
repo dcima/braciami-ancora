@@ -115,7 +115,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     const calculated = calcolaCodiceFiscale({
       nome: formData.nome,
       cognome: formData.cognome,
-      data_nascita: formData.data_nascita,
+      dataNascita: formData.data_nascita,
       sesso: (formData.sesso as 'M' | 'F') || 'M',
       codiceCatastale: codCatastale
     });
@@ -519,7 +519,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                           const autoCf = calcolaCodiceFiscale({
                             nome: updated.nome,
                             cognome: updated.cognome,
-                            data_nascita: updated.data_nascita,
+                            dataNascita: updated.data_nascita,
                             sesso: (updated.sesso as 'M' | 'F') || 'M',
                             codiceCatastale: comune.codiceCatastale
                           });

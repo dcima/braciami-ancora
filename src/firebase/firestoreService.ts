@@ -33,7 +33,11 @@ import {
   CustomerSupportChatMessage,
   SlidingConfigItem,
   AccessoAdminLog,
-  NewsletterSubscriber
+  NewsletterSubscriber,
+  CustomerProfile,
+  OtpRequestResult,
+  PaymentSimulationResult,
+  PaymentMethod
 } from '../types';
 import { DEFAULT_SLIDINGS_CONFIG, DEFAULT_ACCESSO_ADMIN } from '../data/slidingsConfigData';
 import {
@@ -499,12 +503,12 @@ export const FirestoreService = {
     try {
       const snap = await getDocs(collection(db, path));
       if (snap.empty) {
-        return SEED_USERS;
+        return [];
       }
       return snap.docs.map((d) => d.data() as UserData);
     } catch (error) {
-      console.warn('Could not fetch users from Firestore, using fallback:', error);
-      return SEED_USERS;
+      console.warn('Notice fetching users from Firestore:', error);
+      return [];
     }
   },
 
@@ -528,10 +532,7 @@ export const FirestoreService = {
       console.warn('Notice loading user profile:', err);
     }
 
-    const found = SEED_USERS.find(
-      (u) => u.uid === uidOrEmail || u.email.toLowerCase() === uidOrEmail.toLowerCase()
-    );
-    return found || null;
+    return null;
   },
 
   /**
@@ -664,12 +665,12 @@ export const FirestoreService = {
     try {
       const snap = await getDocs(collection(db, path));
       if (snap.empty) {
-        return SEED_ORDERS;
+        return [];
       }
       return snap.docs.map((d) => d.data() as Order);
     } catch (error) {
-      console.warn('Could not fetch orders from Firestore, using fallback:', error);
-      return SEED_ORDERS;
+      console.warn('Notice fetching orders from Firestore:', error);
+      return [];
     }
   },
 
@@ -831,33 +832,10 @@ export const FirestoreService = {
    * Fetch all newsletter subscribers from Firebase "newsletter" table (Admin only)
    */
   async getNewsletterSubscribers(): Promise<NewsletterSubscriber[]> {
-    const defaultSeed: NewsletterSubscriber[] = [
-      (() => {
-        const origin =
-          typeof window !== 'undefined' ? window.location.origin : 'https://braciamiancora.it';
-        const unsubUrl = `${origin}/?unsubscribe_newsletter=marco.bonora%40email.it&token=seed_01`;
-        const privUrl = `${origin}/?page=privacy`;
-        const mail = this.buildNewsletterWelcomeEmail('marco.bonora@email.it', unsubUrl, privUrl);
-        return {
-          id: 'marco_bonora_email_it',
-          email: 'marco.bonora@email.it',
-          subscribedAt: '2026-10-15T10:30:00.000Z',
-          language: 'it_IT',
-          status: 'attivo',
-          unsubscribeToken: 'seed_01',
-          welcomeEmailSent: true,
-          welcomeEmailSubject: mail.subject,
-          welcomeEmailBodyHtml: mail.html,
-          legalUnsubscribeUrl: unsubUrl,
-          legalPrivacyUrl: privUrl
-        };
-      })()
-    ];
-
     try {
       const snap = await getDocs(collection(db, 'newsletter'));
       if (snap.empty) {
-        return defaultSeed;
+        return [];
       }
       const list = snap.docs.map((d) => {
         const raw = d.data() as Partial<NewsletterSubscriber>;
@@ -886,7 +864,7 @@ export const FirestoreService = {
       });
       return list.sort((a, b) => b.subscribedAt.localeCompare(a.subscribedAt));
     } catch {
-      return defaultSeed;
+      return [];
     }
   },
 
@@ -1265,5 +1243,299 @@ export const FirestoreService = {
       testo,
       updatedAt: new Date().toISOString()
     }, { merge: true });
+  },
+
+  /**
+   * Realtime subscription for all orders (Firestore Realtime)
+   */
+  subscribeAllOrders(onUpdate: (orders: Order[]) => void): () => void {
+    const q = collection(db, 'orders');
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const orders = snapshot.docs.map((d) => d.data() as Order);
+        onUpdate(orders);
+      },
+      (error) => {
+        console.warn('Realtime orders subscription notice:', error);
+      }
+    );
+  },
+
+  /**
+   * Realtime subscription for all users (Firestore Realtime)
+   */
+  subscribeAllUsers(onUpdate: (users: UserData[]) => void): () => void {
+    const q = collection(db, 'users');
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const users = snapshot.docs.map((d) => d.data() as UserData);
+        onUpdate(users);
+      },
+      (error) => {
+        console.warn('Realtime users subscription notice:', error);
+      }
+    );
+  },
+
+  /**
+   * Query orders for customer by email or phone (Firestore Realtime)
+   */
+  async getOrdersForCustomer(phoneOrEmail: string): Promise<Order[]> {
+    const clean = phoneOrEmail.trim().toLowerCase();
+    const cleanDigits = phoneOrEmail.replace(/\D/g, '');
+    try {
+      const snap = await getDocs(collection(db, 'orders'));
+      const allOrders = snap.docs.map((d) => d.data() as Order);
+      return allOrders.filter((o) => {
+        const c = o.customer;
+        if (!c) return false;
+        if (c.email && c.email.toLowerCase() === clean) return true;
+        if (c.phone) {
+          const pDigits = c.phone.replace(/\D/g, '');
+          if (cleanDigits.length >= 6 && pDigits.includes(cleanDigits)) return true;
+          if (c.phone.toLowerCase().includes(clean)) return true;
+        }
+        return false;
+      });
+    } catch (e) {
+      console.warn('Notice querying customer orders in Firestore:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Request OTP code via Firebase Realtime Firestore
+   */
+  async requestCustomerOtp(phoneOrEmail: string): Promise<OtpRequestResult> {
+    const term = phoneOrEmail.trim();
+    const cleanKey = term.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+
+    let customer: CustomerProfile | undefined;
+    try {
+      const allUsers = await this.getAllUsers();
+      const match = allUsers.find(
+        (u) =>
+          u.email.toLowerCase() === term.toLowerCase() ||
+          (u.telefono && u.telefono.replace(/\D/g, '').includes(term.replace(/\D/g, '')))
+      );
+      if (match) {
+        customer = {
+          id: match.uid,
+          fullName: match.nome ? `${match.nome} ${match.cognome || ''}`.trim() : match.email.split('@')[0],
+          email: match.email,
+          phone: match.telefono || '',
+          address: match.indirizzo || 'Via Penzale 25',
+          registeredDate: match.createdAt || new Date().toISOString(),
+          totalSpent: match.totale_speso || 0,
+          orderCount: match.numero_ordini || 0,
+          lastOrderDate: new Date().toISOString(),
+          loyaltyPoints: match.punti_fedelta || 0,
+          segment: (match.totale_speso || 0) > 300 ? 'Top Spender' : 'Nuovo Cliente',
+          preferredCut: 'Specialità Bottega Cento',
+          first_name: match.nome || '',
+          last_name: match.cognome || '',
+          full_name: match.nome ? `${match.nome} ${match.cognome || ''}`.trim() : match.email.split('@')[0],
+          is_registered: true,
+          loyalty_points: match.punti_fedelta || 0
+        };
+      }
+    } catch (e) {
+      console.warn('Notice matching customer for OTP:', e);
+    }
+
+    try {
+      await setDoc(doc(db, 'otps', cleanKey), {
+        phoneOrEmail: term,
+        code,
+        expiresAt,
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Notice saving OTP to Firestore:', e);
+    }
+
+    const targetName = customer ? customer.fullName : 'Cliente Bottega Cento';
+    return {
+      success: true,
+      code,
+      phoneOrEmail: term,
+      customer,
+      expiresInSeconds: 300,
+      message: `Codice OTP di verifica per ${targetName}: ${code}`
+    };
+  },
+
+  /**
+   * Verify OTP code via Firebase Realtime Firestore
+   */
+  async verifyCustomerOtp(
+    phoneOrEmail: string,
+    code: string
+  ): Promise<{ success: boolean; customer?: CustomerProfile; error?: string }> {
+    const term = phoneOrEmail.trim();
+    const cleanKey = term.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const cleanCode = code.trim();
+
+    try {
+      const otpDocRef = doc(db, 'otps', cleanKey);
+      const snap = await getDoc(otpDocRef);
+
+      if (!snap.exists()) {
+        return { success: false, error: 'Nessun codice OTP attivo per questo recapito o sessione scaduta.' };
+      }
+
+      const data = snap.data();
+      if (Date.now() > (data.expiresAt || 0)) {
+        await deleteDoc(otpDocRef).catch(() => {});
+        return { success: false, error: 'Codice OTP scaduto. Richiedine uno nuovo.' };
+      }
+
+      if (data.code !== cleanCode) {
+        return { success: false, error: 'Codice OTP errato. Controlla il messaggio e riprova.' };
+      }
+
+      await deleteDoc(otpDocRef).catch(() => {});
+
+      const allUsers = await this.getAllUsers();
+      const match = allUsers.find(
+        (u) =>
+          u.email.toLowerCase() === term.toLowerCase() ||
+          (u.telefono && u.telefono.replace(/\D/g, '').includes(term.replace(/\D/g, '')))
+      );
+
+      let customer: CustomerProfile;
+      if (match) {
+        customer = {
+          id: match.uid,
+          fullName: match.nome ? `${match.nome} ${match.cognome || ''}`.trim() : match.email.split('@')[0],
+          email: match.email,
+          phone: match.telefono || '',
+          address: match.indirizzo || 'Via Penzale 25',
+          registeredDate: match.createdAt || new Date().toISOString(),
+          totalSpent: match.totale_speso || 0,
+          orderCount: match.numero_ordini || 0,
+          lastOrderDate: new Date().toISOString(),
+          loyaltyPoints: match.punti_fedelta || 0,
+          segment: (match.totale_speso || 0) > 300 ? 'Top Spender' : 'Nuovo Cliente',
+          preferredCut: 'Specialità Bottega Cento',
+          first_name: match.nome || '',
+          last_name: match.cognome || '',
+          full_name: match.nome ? `${match.nome} ${match.cognome || ''}`.trim() : match.email.split('@')[0],
+          is_registered: true,
+          loyalty_points: match.punti_fedelta || 0
+        };
+      } else {
+        customer = {
+          id: `guest_${cleanKey}`,
+          fullName: term,
+          email: term.includes('@') ? term : '',
+          phone: term.includes('@') ? '' : term,
+          address: 'Via Penzale 25, Cento FE',
+          registeredDate: new Date().toISOString(),
+          totalSpent: 0,
+          orderCount: 0,
+          lastOrderDate: new Date().toISOString(),
+          loyaltyPoints: 0,
+          segment: 'Nuovo Cliente',
+          preferredCut: 'Specialità Bottega Cento',
+          first_name: term,
+          last_name: '',
+          full_name: term,
+          is_registered: false,
+          loyalty_points: 0
+        };
+      }
+
+      return { success: true, customer };
+    } catch (e) {
+      console.warn('Notice verifying OTP in Firestore:', e);
+      return { success: false, error: 'Errore di connessione a Firebase Realtime durante la verifica OTP.' };
+    }
+  },
+
+  /**
+   * Process payment simulation with zero SQLite dependencies
+   */
+  simulatePaymentProcessing(
+    method: PaymentMethod,
+    amount: number,
+    customerData: { fullName: string; phone: string; email: string }
+  ): PaymentSimulationResult {
+    const timestamp = new Date().toISOString();
+    const amountStr = `€${amount.toFixed(2)}`;
+
+    switch (method) {
+      case 'carta': {
+        const pciToken = `PCI_DSS_TOKEN_${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+        const authCode = `AUTH_${Math.floor(100000 + Math.random() * 900000)}`;
+        return {
+          success: true,
+          method: 'Carta di Credito / Debito (PCI-DSS)',
+          transactionId: pciToken,
+          statusText: 'PAGAMENTO AUTORIZZATO (3D-SECURE V2)',
+          details: {
+            protocol: 'PCI-DSS Compliant Tokenization',
+            authorization_code: authCode,
+            masked_card: '**** **** **** 4242',
+            circuit: 'Mastercard / Visa Direct',
+            timestamp,
+            merchant: 'Braciami Ancora Cento - FE'
+          },
+          receiptMessage: `Transazione ${authCode} confermata per ${amountStr}. Ricevuta fiscale digitale inviata a ${customerData.email}.`
+        };
+      }
+      case 'satispay': {
+        const satispayChargeId = `SATISPAY_${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+        return {
+          success: true,
+          method: 'Satispay Pay-by-Link',
+          transactionId: satispayChargeId,
+          statusText: 'TRANSAZIONE APPROVATA DA SATISPAY APP',
+          details: {
+            charge_id: satispayChargeId,
+            smart_code: 'SATISPAY-CENTO-FE',
+            buyer_phone: customerData.phone,
+            timestamp
+          },
+          receiptMessage: `Richiesta di pagamento inviata su app Satispay (${customerData.phone}). Ricevuta registrata.`
+        };
+      }
+      case 'paypal': {
+        const paypalCaptureId = `PAYPAL_CAPTURE_${Math.random().toString(36).substring(2, 12).toUpperCase()}`;
+        return {
+          success: true,
+          method: 'PayPal Express Checkout',
+          transactionId: paypalCaptureId,
+          statusText: 'COMPLETED - PAYPAL BUYER PROTECTION',
+          details: {
+            capture_id: paypalCaptureId,
+            payer_email: customerData.email,
+            status: 'COMPLETED',
+            seller_protection: 'ELIGIBLE',
+            timestamp
+          },
+          receiptMessage: `Pagamento PayPal ${paypalCaptureId} completato. Ricevuta inviata all'account PayPal ${customerData.email}.`
+        };
+      }
+      case 'contanti':
+      default: {
+        return {
+          success: true,
+          method: 'Contanti al Ritiro / alla Consegna',
+          transactionId: `CASH_${Date.now()}`,
+          statusText: 'IN ATTESA DI SALDO ALLA CONSEGNA / AL RITIRO',
+          details: {
+            amount_due: amountStr,
+            pickup_address: 'Braciami Ancora, Via Penzale 25, 44042 Cento (FE)',
+            timestamp
+          },
+          receiptMessage: `Ordine registrato con pagamento in contanti (€${amount.toFixed(2)}). Prepara l'importo esatto per velocizzare la consegna.`
+        };
+      }
+    }
   }
 };

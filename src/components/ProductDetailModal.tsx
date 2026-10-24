@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { useI18n } from '../i18n/I18nContext';
 import { ProductVisual } from './ProductVisual';

@@ -1,7 +1,7 @@
 import { LocalGroceryStore30Km, Product, ScrapedCompetitorProductRecord, ScrapingScheduleJob } from '../types';
 import { ENRICHED_SEED_PRODUCTS } from './articlesArchitectureData';
 
-interface BaseStoreSeed {
+export interface BaseStoreSeed {
   id: string;
   storeName: string;
   storeType: 'piccola_distribuzione' | 'catena';
@@ -19,7 +19,7 @@ interface BaseStoreSeed {
   priceMultiplier: number;
 }
 
-const BASE_STORES_30KM: BaseStoreSeed[] = [
+export const BASE_STORES_30KM: BaseStoreSeed[] = [
   {
     id: 'store-cento-conad',
     storeName: 'Conad Superstore Cento',
@@ -362,53 +362,12 @@ const BASE_STORES_30KM: BaseStoreSeed[] = [
   }
 ];
 
-export function buildLocalGroceryStores30Km(
-  catalogProducts: Product[] = ENRICHED_SEED_PRODUCTS,
-  timestampIso = '2026-10-24T05:30:00.000Z'
-): LocalGroceryStore30Km[] {
-  return BASE_STORES_30KM.map((store, sIdx) => {
-    const scrapedProducts: ScrapedCompetitorProductRecord[] = catalogProducts.map((prod, pIdx) => {
-      const ean =
-        prod.identification?.ean13 ||
-        prod.internationalCodes?.gtin13 ||
-        `80044042${String(pIdx + 101).padStart(5, '0')}`;
-      // Deterministic variance per store & product
-      const variance = ((sIdx * 7 + pIdx * 3) % 11 - 4) * 0.015;
-      const computedPrice = Number(
-        Math.max(1.5, prod.price * (store.priceMultiplier + variance)).toFixed(2)
-      );
-
-      return {
-        id: `${store.id}_${prod.id}`,
-        storeId: store.id,
-        storeName: store.storeName,
-        storeType: store.storeType,
-        chainName: store.chainName,
-        postalCode: store.postalCode,
-        city: store.city,
-        province: store.province,
-        region: store.region,
-        country: store.country,
-        distanceKm: store.distanceFromCentoKm,
-        productId: prod.id,
-        category: prod.category,
-        eanCode: ean,
-        descriptionIt: `${prod.name} — ${prod.weight}`,
-        salePriceEur: computedPrice,
-        ourPriceEur: prod.price,
-        lastScrapedAt: timestampIso
-      };
-    });
-
-    return {
-      ...store,
-      lastScrapedAt: timestampIso,
-      scrapedProducts
-    };
-  });
+export function buildLocalGroceryStores30Km(): LocalGroceryStore30Km[] {
+  // Rimosso ogni algoritmo o moltiplicatore finto: i dati provengono dallo scraper web reale
+  return [];
 }
 
-export const SEED_LOCAL_GROCERY_STORES_30KM: LocalGroceryStore30Km[] = buildLocalGroceryStores30Km();
+export const SEED_LOCAL_GROCERY_STORES_30KM: LocalGroceryStore30Km[] = [];
 
 export const INITIAL_SCRAPING_JOBS: ScrapingScheduleJob[] = [
   {

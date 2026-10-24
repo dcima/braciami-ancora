@@ -104,6 +104,7 @@ export interface ArticleLogisticsRules {
   allowedDispatchDays: number[];    // 1=Lun, 2=Mar, 3=Mer, 4=Gio, 5=Ven (es. [1,2,3] per freschi in UE)
   shippableZones: ShippableZone[];
   maxTransitHours: number;          // es. 2h caldo, 48h fresco isotermico, 720h ambiente
+  storageTemperatureRange?: string;
 }
 
 export interface CompetitorBenchmarkEntry {
@@ -125,6 +126,7 @@ export interface ArticleCompetitorIntelligence {
 
 export interface InternationalCodes {
   gtinEan13: string;                  // Codice a barre GS1 EAN-13 internazionale
+  gtin13?: string;
   itf14CartonCode?: string;           // Codice logistico DUN-14 / ITF-14 per lo scatolone multiplo
   taricHsCode: string;                // Codice Doganale Armonizzato UE TARIC (8-10 cifre)
   gs1GpcBrickCode?: string;           // Classificazione merceologica mondiale GS1 GPC
@@ -136,6 +138,7 @@ export interface PhysicalManufacturingOrigin {
   manufacturerLegalName: string;      // Ragione Sociale del produttore / trasformatore
   brandOwner: string;                 // Proprietario del marchio commerciale
   plantName: string;                  // Nome dello stabilimento / laboratorio / caseificio / cantina
+  facilityName?: string;
   physicalStreetAddress: string;      // Indirizzo fisico esatto di produzione/assemblaggio
   city: string;
   provinceCode: string;
@@ -196,6 +199,7 @@ export interface DrillDownEcommerceTarget {
 
 export interface NutritionalFacts {
   energyKj?: number;         // kJ per 100g/porzione (Reg. UE 1169/2011)
+  energyKcal?: number;
   calories: number;          // kcal per portion or 100g
   fats: number;              // grams total fat
   saturatedFats?: number;    // grams acidi grassi saturi
@@ -203,6 +207,7 @@ export interface NutritionalFacts {
   sugars?: number;           // grams di cui zuccheri
   fiber?: number;            // grams fibre
   proteins: number;          // grams proteine
+  proteinsG?: number;
   saltGrams?: number;        // grams sale (NaCl equivalente)
   nutriScore?: 'A' | 'B' | 'C' | 'D' | 'E';
   novaGroup?: 1 | 2 | 3 | 4; // Grado di trasformazione NOVA
@@ -250,6 +255,7 @@ export interface Product {
   heatScale?: number;
   dryAgedDays?: number;
   imageUrl?: string;
+  weight?: string;
   
   // Nutrizione e Storia
   nutritionalFacts?: NutritionalFacts;
@@ -535,6 +541,8 @@ export interface CustomerProfile {
   numero_civico?: string;
   cap?: string;
   provincia?: string;
+  city?: string;
+  province?: string;
   codice_nazione?: string;
   telefono?: string;
   tipo_utente?: 0 | 1;
@@ -543,6 +551,30 @@ export interface CustomerProfile {
   numero_ordini?: number;
   is_otp_guest?: boolean;
   createdAt?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  is_registered?: boolean;
+  loyalty_points?: number;
+}
+
+export interface OtpRequestResult {
+  success: boolean;
+  code?: string;
+  phoneOrEmail: string;
+  customer?: CustomerProfile;
+  expiresInSeconds?: number;
+  message: string;
+  error?: string;
+}
+
+export interface PaymentSimulationResult {
+  success: boolean;
+  method: string;
+  transactionId: string;
+  statusText: string;
+  details: Record<string, unknown>;
+  receiptMessage: string;
 }
 
 export interface Promozione {

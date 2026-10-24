@@ -18,7 +18,6 @@ import { auth, db, OAuthProviderId } from './firebase';
 import { handleFirestoreError, OperationType } from './errors';
 import { UserData } from '../types';
 import { SEED_USERS } from '../data/seedData';
-import { inMemSql } from '../db/sqlite';
 import { useI18n } from '../i18n/I18nContext';
 import { Language } from '../i18n/translations';
 import { ComuneIstat, COMUNI_ISTAT } from '../data/comuniIstatData';
@@ -615,18 +614,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { registered: true, profile: adminProfile };
     }
 
-    // 3. Check SQLite CRM Customers
-    const sqlCust = inMemSql.findCustomer(cleanEmail);
-    if (sqlCust && sqlCust.is_registered) {
-      const p = buildLocalProfile(sqlCust.id, cleanEmail, sqlCust.full_name);
-      p.telefono = sqlCust.phone;
-      p.indirizzo = sqlCust.address;
-      p.cap = sqlCust.cap;
-      p.provincia = sqlCust.province;
-      return { registered: true, profile: p };
-    }
-
-    // 4. Check Local Registry of Verified Users
+    // 3. Check Local Registry of Verified Users
     try {
       const regRaw = localStorage.getItem(REGISTERED_USERS_REGISTRY_KEY);
       if (regRaw) {
@@ -951,7 +939,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nome: formNome.trim() || 'Cliente',
       cognome: formCognome.trim() || 'Centese',
       sesso: formSesso,
-      dataNascita: formDataNascita || '1990-01-01',
       data_nascita: formDataNascita || '1990-01-01',
       codice_fiscale: finalCodiceFiscale,
       numero_passaporto: finalPassport,

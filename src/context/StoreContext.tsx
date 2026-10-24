@@ -17,26 +17,16 @@ import {
   NewsletterSubscriber
 } from '../types';
 import { DEFAULT_SLIDINGS_CONFIG, DEFAULT_ACCESSO_ADMIN } from '../data/slidingsConfigData';
-import { INITIAL_ORDERS, INITIAL_CUSTOMERS, INITIAL_CAMPAIGNS, INITIAL_PROPOSALS } from '../data/mockData';
+import { INITIAL_CAMPAIGNS, INITIAL_PROPOSALS } from '../data/mockData';
 import { ENRICHED_SEED_PRODUCTS } from '../data/articlesArchitectureData';
 import { SEED_ADMIN_NOTIFICATIONS } from '../utils/loyaltyAndNotifications';
 import {
   SEED_LOCAL_GROCERY_STORES_30KM,
   INITIAL_SCRAPING_JOBS,
-  buildLocalGroceryStores30Km
+  BASE_STORES_30KM
 } from '../data/localGroceryStores30KmData';
 import { executeRealProductScraping } from '../services/realFoodScraper';
-import {
-  sqlGetCustomers,
-  sqlGetAllOrders,
-  sqlGetOrdersForCustomer,
-  sqlRequestOtp,
-  sqlVerifyOtp,
-  simulatePaymentProcessing,
-  OtpRequestResult,
-  PaymentSimulationResult,
-  SqlCustomer
-} from '../db/sqlite';
+import { OtpRequestResult, PaymentSimulationResult } from '../types';
 import { FirestoreService } from '../firebase/firestoreService';
 
 export type ActivePage =
@@ -104,7 +94,7 @@ interface StoreContextType {
   slidingsConfig: SlidingConfigItem[];
   saveSlidingsConfig: (items: SlidingConfigItem[]) => Promise<void>;
   accessoAdminLog: AccessoAdminLog;
-  recordAccessoAdmin: (email: string) => Promise<void>;
+  recordAccessoAdmin: (email: string) => Promise<AccessoAdminLog>;
 
   // Promos
   campaigns: PromoCampaign[];
@@ -127,9 +117,9 @@ interface StoreContextType {
   createCommercialProposal: (proposal: Omit<CommercialProposal, 'id' | 'createdDate' | 'status'>) => void;
   sendCommercialProposal: (id: string) => void;
 
-  // SQLite OTP & Realistic Customer Order Tracking
+  // Firebase Realtime OTP & Customer Order Tracking
   requestCustomerOtp: (phoneOrEmail: string) => Promise<OtpRequestResult>;
-  verifyCustomerOtp: (phoneOrEmail: string, code: string) => Promise<{ success: boolean; customer?: SqlCustomer; error?: string }>;
+  verifyCustomerOtp: (phoneOrEmail: string, code: string) => Promise<{ success: boolean; customer?: CustomerProfile; error?: string }>;
   fetchCustomerOrders: (phoneOrEmail: string) => Promise<Order[]>;
   processPaymentMethod: (method: PaymentMethod, amount: number, customer: { fullName: string; phone: string; email: string }) => PaymentSimulationResult;
 
@@ -264,21 +254,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [campaigns] = useState<PromoCampaign[]>(INITIAL_CAMPAIGNS);
   const [appliedPromo, setAppliedPromo] = useState<PromoCampaign | null>(null);
 
-  // Orders & Customers loaded from SQLite & Firebase
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [customers, setCustomers] = useState<CustomerProfile[]>(INITIAL_CUSTOMERS);
+  // Orders & Customers loaded directly from Firebase Realtime Firestore
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [activeCustomer, setActiveCustomer] = useState<CustomerProfile | null>(null);
 
-  // Load products and notifications from Firebase + SQLite customers/orders
+  // Load products, notifications, stores and configuration directly from Firebase Realtime
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
-        const [fbProds, fbNotifs, sqlCusts, sqlOrds, fbStores30, fbJobs, fbSlidings, fbAccessoAdmin, fbNewsletter] = await Promise.all([
+        const [fbProds, fbNotifs, fbUsers, fbOrders, fbStores30, fbJobs, fbSlidings, fbAccessoAdmin, fbNewsletter] = await Promise.all([
           FirestoreService.getAllProducts(),
           FirestoreService.getAdminNotifications(),
-          sqlGetCustomers(),
-          sqlGetAllOrders(),
+          FirestoreService.getAllUsers(),
+          FirestoreService.getAllOrders(),
           FirestoreService.getLocalGroceryStores30Km(),
           FirestoreService.getScrapingJobs(),
           FirestoreService.getSlidingsConfig(),
@@ -288,8 +278,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (isMounted) {
           if (fbProds && fbProds.length > 0) setProducts(fbProds);
           if (fbNotifs && fbNotifs.length > 0) setAdminNotifications(fbNotifs);
-          if (sqlCusts && sqlCusts.length > 0) setCustomers(sqlCusts);
-          if (sqlOrds && sqlOrds.length > 0) setOrders(sqlOrds);
+          if (fbUsers && fbUsers.length > 0) {
+            setCustomers(
+              fbUsers.map((u) => ({
+                id: u.uid,
+                fullName: u.nome ? `${u.nome} ${u.cognome || ''}`.trim() : u.email.split('@')[0],
+                email: u.email,
+                phone: u.telefono || '',
+                address: u.indirizzo || 'Via Penzale 25',
+                registeredDate: u.createdAt || new Date().toISOString(),
+                totalSpent: u.totale_speso || 0,
+                orderCount: u.numero_ordini || 0,
+                lastOrderDate: new Date().toISOString(),
+                loyaltyPoints: u.punti_fedelta || 0,
+                segment: (u.totale_speso || 0) > 300 ? 'Top Spender' : 'Nuovo Cliente',
+                preferredCut: 'Specialità Bottega Cento',
+                first_name: u.nome || '',
+                last_name: u.cognome || '',
+                full_name: u.nome ? `${u.nome} ${u.cognome || ''}`.trim() : u.email.split('@')[0],
+                is_registered: true,
+                loyalty_points: u.punti_fedelta || 0
+              }))
+            );
+          }
+          if (fbOrders && fbOrders.length > 0) setOrders(fbOrders);
           if (fbStores30 && fbStores30.length > 0) setLocalStores30Km(fbStores30);
           if (fbJobs && fbJobs.length > 0) setScrapingJobs(fbJobs);
           if (fbSlidings && fbSlidings.length > 0) setSlidingsConfig(fbSlidings);
@@ -302,11 +314,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
       } catch (err) {
-        console.warn('Database init fallback to memory defaults:', err);
+        console.warn('Database init notice:', err);
       }
     })();
+
+    // Sottoscrizione Realtime agli ordini Firestore
+    const unsubOrders = FirestoreService.subscribeAllOrders((realtimeOrders) => {
+      if (isMounted && realtimeOrders) {
+        setOrders(realtimeOrders);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubOrders();
     };
   }, []);
 
@@ -334,9 +355,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [subscribedNewsletterEmails, setSubscribedNewsletterEmails] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.NEWSLETTER);
-      return saved ? JSON.parse(saved) : ['marco.bonora@email.it'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['marco.bonora@email.it'];
+      return [];
     }
   });
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
@@ -643,34 +664,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsOtpVerified(false);
   };
 
-  // SQLite Customer OTP & Order Tracking Services
+  // Firebase Realtime Customer OTP & Order Tracking Services
   const requestCustomerOtp = async (phoneOrEmail: string) => {
-    return await sqlRequestOtp(phoneOrEmail);
+    return await FirestoreService.requestCustomerOtp(phoneOrEmail);
   };
 
   const verifyCustomerOtp = async (phoneOrEmail: string, code: string) => {
-    const result = await sqlVerifyOtp(phoneOrEmail, code);
+    const result = await FirestoreService.verifyCustomerOtp(phoneOrEmail, code);
     if (result.success && result.customer) {
-      setActiveCustomer({
-        id: result.customer.id,
-        fullName: result.customer.full_name,
-        email: result.customer.email,
-        phone: result.customer.phone,
-        address: result.customer.address,
-        registeredDate: result.customer.registered_date,
-        totalSpent: result.customer.total_spent,
-        orderCount: result.customer.order_count,
-        lastOrderDate: result.customer.last_order_date,
-        loyaltyPoints: result.customer.loyalty_points,
-        segment: result.customer.segment,
-        preferredCut: result.customer.notes
-      });
+      setActiveCustomer(result.customer);
     }
     return result;
   };
 
   const fetchCustomerOrders = async (phoneOrEmail: string) => {
-    return await sqlGetOrdersForCustomer(phoneOrEmail);
+    return await FirestoreService.getOrdersForCustomer(phoneOrEmail);
   };
 
   const processPaymentMethod = (
@@ -678,7 +686,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     amount: number,
     customer: { fullName: string; phone: string; email: string }
   ) => {
-    return simulatePaymentProcessing(method, amount, customer);
+    return FirestoreService.simulatePaymentProcessing(method, amount, customer);
   };
 
   // Admin Real-Time Notification Functions
@@ -838,41 +846,44 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const nowIso = new Date().toISOString();
     
     // Esecuzione dello scraping REALE online: scansione codici EAN-13, marchi e schede prodotto
-    let realSheets = [];
+    let realSheets: any[] = [];
     try {
       realSheets = await executeRealProductScraping();
     } catch (e) {
       console.warn('[Scraping] Errore scansione web reale:', e);
     }
 
-    const updatedStores = buildLocalGroceryStores30Km(products, nowIso).map((store) => {
+    const updatedStores: LocalGroceryStore30Km[] = BASE_STORES_30KM.map((store) => {
       // Associa le schede prodotto reali ottenute dalla scansione online
       const matchingReal = realSheets.filter(
-        (rs) => rs.referenceStore.chainName.toLowerCase().includes(store.chainName.toLowerCase()) ||
-                rs.referenceStore.city.toLowerCase() === store.city.toLowerCase()
+        (rs: any) => rs.referenceStore?.chainName?.toLowerCase().includes(store.chainName.toLowerCase()) ||
+                     rs.referenceStore?.city?.toLowerCase() === store.city.toLowerCase()
       );
 
-      if (matchingReal.length > 0) {
-        return {
-          ...store,
-          lastScrapedAt: nowIso,
-          scrapedProducts: matchingReal.map((mr) => ({
-            ean13: mr.ean13,
-            competitorProductName: `${mr.productName} (${mr.brand})`,
-            category: mr.category,
-            ourEquivalentProductName: mr.ourEquivalentPrice ? `${mr.productName} - Selezione Bottega` : 'Taglio Equivalente Bottega',
-            competitorPricePerKg: mr.pricePerKgEstimated,
-            ourPricePerKg: Number((mr.ourEquivalentPrice * 4).toFixed(2)),
-            priceDiffPercent: mr.priceDiffPercent,
-            isConvenient: mr.isConvenient,
-            unit: '€/Kg' as const,
-            sourceUrl: mr.sourceUrl,
-            imageUrl: mr.imageUrl,
-            quantity: mr.quantity
-          }))
-        };
-      }
-      return store;
+      return {
+        ...store,
+        lastScrapedAt: nowIso,
+        scrapedProducts: matchingReal.map((mr: any, pIdx: number) => ({
+          id: `scraped-${store.id}-${pIdx}`,
+          storeId: store.id,
+          storeName: store.storeName,
+          storeType: store.storeType,
+          chainName: store.chainName,
+          postalCode: store.postalCode,
+          city: store.city,
+          province: store.province,
+          region: store.region,
+          country: store.country,
+          distanceKm: store.distanceFromCentoKm,
+          productId: `prod-real-${mr.ean13}`,
+          category: mr.category || 'Alimentari',
+          eanCode: mr.ean13,
+          descriptionIt: `${mr.productName} (${mr.brand}) - ${mr.quantity}`,
+          salePriceEur: mr.competitorPrice || 0,
+          ourPriceEur: mr.ourEquivalentPrice || 0,
+          lastScrapedAt: nowIso
+        }))
+      };
     });
 
     setLocalStores30Km(updatedStores);
