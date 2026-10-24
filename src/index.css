@@ -123,3 +123,8 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a29e;
 }
+
+/* Nasconde il badge fluttuante reCAPTCHA (conforme a ToS Google tramite dicitura di protezione nel footer e checkout) */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
