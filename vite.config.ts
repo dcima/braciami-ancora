@@ -216,7 +216,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), oauthOtpEmailMiddleware()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname || '.', '.'),
       },
     },
     server: {
