@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../firebase/AuthContext';
 import { useStore } from '../context/StoreContext';
 import { UserData } from '../types';
@@ -74,7 +75,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   // Stili atomici per contrasto perfetto sia in tema chiaro che in tema scuro
   const inputBgClass = isLight
@@ -215,13 +216,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
   const userTypeLabel = isAdmin ? 'Amministratore Bottega' : 'Cliente Registrato';
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[600] bg-black/85 backdrop-blur-md overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-start animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-start animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className={`relative my-auto w-full max-w-3xl rounded-3xl shadow-2xl border overflow-hidden ${
+        className={`relative my-6 sm:my-10 w-full max-w-3xl rounded-3xl shadow-2xl border overflow-hidden ${
           isLight
             ? 'bg-stone-50 border-stone-300 text-stone-900'
             : 'bg-stone-900 border-stone-750 text-stone-100'
@@ -929,6 +930,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
