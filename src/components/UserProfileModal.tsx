@@ -4,6 +4,7 @@ import { useStore } from '../context/StoreContext';
 import { UserData } from '../types';
 import { ComuneIstatPicker } from './ComuneIstatPicker';
 import { validateAndSanitizeProfileImage } from '../utils/imageSecurity';
+import { uploadUserProfilePhoto } from '../firebase/storageService';
 import { calcolaCodiceFiscale, validaCodiceFiscale } from '../utils/codiceFiscale';
 import { COMUNI_ISTAT } from '../data/comuniIstatData';
 import {
@@ -175,12 +176,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setSaveSuccess(false);
 
     try {
+      let finalPhotoUrl = formData.photo_url || '';
+
+      // Se la foto è una nuova immagine Base64 sanificata, caricala su Firebase Cloud Storage
+      if (user?.uid && finalPhotoUrl.startsWith('data:')) {
+        const uploadResult = await uploadUserProfilePhoto(user.uid, finalPhotoUrl);
+        if (uploadResult.downloadUrl) {
+          finalPhotoUrl = uploadResult.downloadUrl;
+        }
+      }
+
       const dataToSave: Partial<UserData> = {
         ...formData,
+        photo_url: finalPhotoUrl,
         cellulare_secondario: formData.is_whatsapp ? formData.telefono : formData.cellulare_secondario
       };
 
       await updateProfileData(dataToSave);
+      setFormData((prev) => ({ ...prev, photo_url: finalPhotoUrl }));
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);

@@ -9,6 +9,7 @@ import {
   AuthProvider as FirebaseAuthProvider
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export type OAuthProviderId =
@@ -25,6 +26,12 @@ export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with the dedicated database ID as mandated by Firebase rules
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firebase Storage
+export const storage = getStorage(
+  app,
+  `gs://${firebaseConfig.storageBucket || 'braciami-ancora.firebasestorage.app'}`
+);
 
 // Initialize Auth
 export const auth = getAuth(app);
