@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { COMUNI_ISTAT, ComuneIstat } from '../data/comuniIstatData';
+import { useStore } from '../context/StoreContext';
 import { Search, MapPin, Check } from 'lucide-react';
 
 interface ComuneIstatPickerProps {
@@ -21,6 +22,9 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
   required = false,
   showCap = true
 }) => {
+  const { theme } = useStore();
+  const isLight = theme === 'chiaro';
+
   const [searchTerm, setSearchTerm] = useState(value || '');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,11 +53,11 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
   return (
     <div className="relative space-y-1" ref={containerRef}>
       <div className="flex items-center justify-between">
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700">
+        <label className={`block text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-700' : 'text-stone-200'}`}>
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
         {provinceSigla && (
-          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/40">
             Prov. {provinceSigla}
           </span>
         )}
@@ -71,14 +75,24 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 bg-white text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-xs"
+          className={`w-full pl-8 pr-3 py-2 rounded-xl border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs transition-colors ${
+            isLight
+              ? 'bg-white text-stone-900 border-stone-300 placeholder-stone-400'
+              : 'bg-stone-800 text-white border-stone-700 placeholder-stone-400'
+          }`}
         />
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-white border border-stone-200 rounded-xl shadow-xl z-50 divide-y divide-stone-100">
+        <div
+          className={`absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-xl shadow-2xl z-[100] border divide-y ${
+            isLight
+              ? 'bg-white border-stone-200 divide-stone-100 text-stone-900'
+              : 'bg-stone-850 border-stone-700 divide-stone-800 text-stone-100'
+          }`}
+        >
           {filteredComuni.length === 0 ? (
-            <div className="p-3 text-xs text-stone-500 text-center">
+            <div className={`p-3 text-xs text-center ${isLight ? 'text-stone-500' : 'text-stone-400'}`}>
               Nessun comune trovato per &quot;{searchTerm}&quot;
             </div>
           ) : (
@@ -93,8 +107,14 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
                     setIsOpen(false);
                     onSelect(c);
                   }}
-                  className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-amber-50/70 transition-colors cursor-pointer ${
-                    isSelected ? 'bg-amber-50 font-bold text-amber-950' : 'text-stone-800'
+                  className={`w-full px-3 py-2.5 text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                    isSelected
+                      ? isLight
+                        ? 'bg-amber-100 font-bold text-amber-950'
+                        : 'bg-amber-500/25 font-bold text-amber-400'
+                      : isLight
+                      ? 'text-stone-800 hover:bg-amber-50/70'
+                      : 'text-stone-200 hover:bg-stone-750'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -104,7 +124,7 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
                   </div>
                   <div className="flex items-center gap-1 shrink-0 text-[10px] text-stone-400">
                     {showCap && c.cap && c.cap.length > 0 && <span>CAP: {c.cap.join(', ')}</span>}
-                    {isSelected && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-amber-500" />}
                   </div>
                 </button>
               );

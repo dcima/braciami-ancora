@@ -4,6 +4,8 @@ import { useStore } from '../context/StoreContext';
 import { UserData } from '../types';
 import { ComuneIstatPicker } from './ComuneIstatPicker';
 import { validateAndSanitizeProfileImage } from '../utils/imageSecurity';
+import { calcolaCodiceFiscale, validaCodiceFiscale } from '../utils/codiceFiscale';
+import { COMUNI_ISTAT } from '../data/comuniIstatData';
 import {
   X,
   User,
@@ -18,12 +20,12 @@ import {
   CheckCircle2,
   Truck,
   Clock,
-  FileText,
-  ShoppingBag,
   Sparkles,
   HelpCircle,
   Save,
-  Trash2
+  Trash2,
+  Calculator,
+  ShoppingBag
 } from 'lucide-react';
 
 interface UserProfileModalProps {
@@ -63,6 +65,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     photo_url: profile?.photo_url || user?.photoURL || ''
   });
 
+  const [cfCalculationNotice, setCfCalculationNotice] = useState<string | null>(null);
   const [imageScanning, setImageScanning] = useState(false);
   const [imageScanSuccess, setImageScanSuccess] = useState<string | null>(null);
   const [imageScanError, setImageScanError] = useState<string | null>(null);
@@ -71,6 +74,58 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Stili atomici per contrasto perfetto sia in tema chiaro che in tema scuro
+  const inputBgClass = isLight
+    ? 'bg-white text-stone-900 border-stone-300 placeholder-stone-400 focus:bg-white focus:ring-amber-500'
+    : 'bg-stone-800 text-white border-stone-700 placeholder-stone-400 focus:bg-stone-800 focus:ring-amber-500';
+
+  const readOnlyBgClass = isLight
+    ? 'bg-stone-100 text-stone-600 border-stone-200'
+    : 'bg-stone-900 text-stone-400 border-stone-800';
+
+  const labelClass = `block text-[11px] font-bold uppercase tracking-wider mb-1 ${
+    isLight ? 'text-stone-700' : 'text-stone-200'
+  }`;
+
+  const cardSectionClass = `p-4 sm:p-5 rounded-2xl border space-y-4 ${
+    isLight ? 'bg-white border-stone-200 text-stone-900' : 'bg-stone-950/90 border-stone-800 text-stone-100'
+  }`;
+
+  // Funzione per calcolare/aggiornare il codice fiscale
+  const handleAutoCalcolaCF = () => {
+    if (!formData.nome || !formData.cognome || !formData.data_nascita || !formData.comune_nascita) {
+      setCfCalculationNotice('Inserisci Nome, Cognome, Data di nascita e Comune di nascita per calcolare il Codice Fiscale.');
+      return;
+    }
+
+    // Ricerca codice catastale dal comune selezionato
+    const comObj = COMUNI_ISTAT.find(
+      (c) => c.nome.toLowerCase() === (formData.comune_nascita || '').toLowerCase()
+    );
+
+    const codCatastale = comObj?.codiceCatastale || (formData.comune_nascita?.toUpperCase() === 'GENOVA' ? 'D969' : '');
+
+    if (!codCatastale) {
+      setCfCalculationNotice('Seleziona il comune di nascita dal menu di ricerca per recuperare il codice ISTAT catastale.');
+      return;
+    }
+
+    const calculated = calcolaCodiceFiscale({
+      nome: formData.nome,
+      cognome: formData.cognome,
+      data_nascita: formData.data_nascita,
+      sesso: (formData.sesso as 'M' | 'F') || 'M',
+      codiceCatastale: codCatastale
+    });
+
+    if (calculated) {
+      setFormData((prev) => ({ ...prev, codice_fiscale: calculated }));
+      setCfCalculationNotice(`Codice Fiscale calcolato correttamente: ${calculated}`);
+    } else {
+      setCfCalculationNotice('Impossibile calcolare il codice fiscale con i dati attuali.');
+    }
+  };
 
   // Gestione caricamento foto con analisi di sicurezza
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,14 +143,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       } else if (result.sanitizedDataUrl) {
         setFormData((prev) => ({ ...prev, photo_url: result.sanitizedDataUrl }));
         setImageScanSuccess(
-          `Immagine verificata con successo (${result.fileSizeKb} KB, ${result.dimensions?.width}x${result.dimensions?.height}px). Metadati EXIF rimossi e codice malevolo escluso.`
+          `Immagine verificata con successo (${result.fileSizeKb} KB, ${result.dimensions?.width}x${result.dimensions?.height}px). Metadati rimossi e codice malevolo escluso.`
         );
       }
     } catch (err: any) {
       setImageScanError(err?.message || 'Errore imprevisto durante l\'analisi di sicurezza');
     } finally {
       setImageScanning(false);
-      // Reset input file per permettere nuovo caricamento dello stesso file se necessario
       e.target.value = '';
     }
   };
@@ -106,7 +160,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setImageScanError(null);
   };
 
-  // Aggiornamento checkbox WhatsApp
   const handleWhatsAppToggle = (checked: boolean) => {
     setFormData((prev) => ({
       ...prev,
@@ -124,7 +177,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     try {
       const dataToSave: Partial<UserData> = {
         ...formData,
-        // Assicuriamo che se is_whatsapp è true il secondario sia allineato
         cellulare_secondario: formData.is_whatsapp ? formData.telefono : formData.cellulare_secondario
       };
 
@@ -140,7 +192,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     }
   };
 
-  // Formattazione data registrazione cliente
   const formattedRegistrationDate = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString('it-IT', {
         day: '2-digit',
@@ -152,25 +203,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const userTypeLabel = isAdmin ? 'Amministratore Bottega' : 'Cliente Registrato';
 
   return (
-    <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[600] bg-black/85 backdrop-blur-md overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-start animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div
-        className={`w-full max-w-3xl rounded-3xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden ${
+        className={`relative my-auto w-full max-w-3xl rounded-3xl shadow-2xl border overflow-hidden ${
           isLight
             ? 'bg-stone-50 border-stone-300 text-stone-900'
-            : 'bg-stone-900 border-stone-700 text-stone-100'
+            : 'bg-stone-900 border-stone-750 text-stone-100'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* HEADER MODAL */}
+        {/* HEADER MODAL - STICKY PER NON ESSERE MAI TAGLIATO */}
         <div
-          className={`px-5 py-4 flex items-center justify-between border-b shrink-0 ${
+          className={`sticky top-0 z-30 px-5 py-4 flex items-center justify-between border-b shadow-sm ${
             isLight
-              ? 'bg-white border-stone-200'
-              : 'bg-stone-950 border-stone-800'
+              ? 'bg-white border-stone-200 text-stone-900'
+              : 'bg-stone-950 border-stone-800 text-white'
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center shrink-0">
               <User className="w-5 h-5" />
             </div>
             <div>
@@ -180,35 +234,39 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   {userTypeLabel}
                 </span>
               </h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                Gestisci le tue informazioni personali, recapiti e preferenze di consegna
+              <p className={`text-xs ${isLight ? 'text-stone-500' : 'text-stone-400'}`}>
+                Dati anagrafici, recapiti verificati e istruzioni per il corriere
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-            title="Chiudi"
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              isLight
+                ? 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'
+                : 'text-stone-400 hover:text-white hover:bg-stone-800'
+            }`}
+            title="Chiudi pannello"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* CONTENUTO SCROLLABILE */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-6">
+        {/* CONTENUTO DEL MODAL */}
+        <div className="p-4 sm:p-6 space-y-6">
 
           {/* MINI-DASHBOARD STATISTICHE E FOTO PROFILO */}
           <div
             className={`p-4 sm:p-5 rounded-2xl border shadow-xs ${
               isLight
-                ? 'bg-white border-stone-200'
-                : 'bg-stone-950/70 border-stone-800'
+                ? 'bg-white border-stone-200 text-stone-900'
+                : 'bg-stone-950/80 border-stone-800 text-stone-100'
             }`}
           >
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
               {/* Foto Profilo e Upload */}
               <div className="relative group shrink-0 text-center">
-                <div className="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-amber-500/40 shadow-lg bg-stone-800 flex items-center justify-center">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-amber-500/50 shadow-xl bg-stone-800 flex items-center justify-center mx-auto">
                   {formData.photo_url ? (
                     <img
                       src={formData.photo_url}
@@ -222,24 +280,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     </div>
                   )}
 
-                  {/* Overlay durante scansione */}
                   {imageScanning && (
-                    <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white text-[10px] text-center p-1">
+                    <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[10px] text-center p-1">
                       <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-1" />
                       <span>Analisi...</span>
                     </div>
                   )}
                 </div>
 
-                {/* Pulsanti gestione foto */}
-                <div className="mt-2 flex items-center justify-center gap-1.5">
+                <div className="mt-2.5 flex items-center justify-center gap-1.5">
                   <label
                     htmlFor="profile-photo-input"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-lg cursor-pointer transition-colors shadow-xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-xl cursor-pointer transition-colors shadow-sm"
                     title="Carica foto (JPG o WEBP, max 1MB)"
                   >
                     <Camera className="w-3.5 h-3.5" />
-                    <span>{formData.photo_url ? 'Cambia' : 'Carica'}</span>
+                    <span>{formData.photo_url ? 'Cambia' : 'Carica foto'}</span>
                   </label>
                   <input
                     id="profile-photo-input"
@@ -254,15 +310,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="p-1 text-stone-400 hover:text-rose-500 rounded-lg transition-colors"
+                      className="p-1.5 text-stone-400 hover:text-rose-500 rounded-xl transition-colors cursor-pointer"
                       title="Rimuovi foto"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
-                <div className="text-[10px] text-stone-400 mt-1">
-                  JPG / WEBP max 1MB
+                <div className={`text-[10px] mt-1 ${isLight ? 'text-stone-400' : 'text-stone-400'}`}>
+                  JPG / WEBP (max 1MB)
                 </div>
               </div>
 
@@ -270,61 +326,68 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               <div className="flex-1 w-full text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
                   <div>
-                    <h3 className="text-lg font-black text-stone-900 dark:text-white">
+                    <h3 className={`text-lg font-black ${isLight ? 'text-stone-900' : 'text-white'}`}>
                       {formData.nome || 'Nome'} {formData.cognome || 'Cognome'}
                     </h3>
-                    <p className="text-xs text-stone-500 font-mono">
-                      {profile?.codice_fiscale || formData.codice_fiscale || 'CF non impostato'}
+                    <p className="text-xs text-amber-500 font-mono font-bold">
+                      {formData.codice_fiscale || profile?.codice_fiscale || 'CF non impostato'}
                     </p>
                   </div>
-                  <span className="inline-flex items-center justify-center gap-1 text-[11px] font-medium text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-full">
+                  <span className={`inline-flex items-center justify-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full ${
+                    isLight ? 'bg-stone-100 text-stone-600' : 'bg-stone-800 text-stone-300'
+                  }`}>
                     <Calendar className="w-3 h-3 text-amber-500" />
-                    <span>Cliente dal: <strong className="text-stone-800 dark:text-stone-200">{formattedRegistrationDate}</strong></span>
+                    <span>Cliente dal: <strong className="font-bold">{formattedRegistrationDate}</strong></span>
                   </span>
                 </div>
 
-                {/* 4 Box KPI Mini-Dashboard */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
-                  <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-amber-50/60 border-amber-200/80' : 'bg-stone-900 border-stone-800'}`}>
-                    <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400 text-[10px] uppercase font-bold tracking-wider">
-                      <ShoppingBag className="w-3.5 h-3.5 text-amber-500" />
+                {/* 3 Box KPI Mini-Dashboard */}
+                <div className="grid grid-cols-3 gap-2.5 pt-1">
+                  <div className={`p-2.5 rounded-xl border text-center ${
+                    isLight ? 'bg-amber-50/70 border-amber-200 text-stone-900' : 'bg-stone-900 border-stone-800 text-stone-100'
+                  }`}>
+                    <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
+                      <ShoppingBag className="w-3 h-3" />
                       <span>Ordini</span>
                     </div>
-                    <div className="text-sm sm:text-base font-black text-stone-900 dark:text-amber-400 mt-0.5">
+                    <div className="text-base sm:text-lg font-black mt-0.5">
                       {profile?.numero_ordini || 0}
                     </div>
                   </div>
 
-                  <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-amber-50/60 border-amber-200/80' : 'bg-stone-900 border-stone-800'}`}>
-                    <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400 text-[10px] uppercase font-bold tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <div className={`p-2.5 rounded-xl border text-center ${
+                    isLight ? 'bg-amber-50/70 border-amber-200 text-stone-900' : 'bg-stone-900 border-stone-800 text-stone-100'
+                  }`}>
+                    <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
+                      <Sparkles className="w-3 h-3" />
                       <span>Spesa Totale</span>
                     </div>
-                    <div className="text-sm sm:text-base font-black text-stone-900 dark:text-amber-400 mt-0.5">
+                    <div className="text-base sm:text-lg font-black mt-0.5">
                       € {(profile?.totale_speso || 0).toFixed(2)}
                     </div>
                   </div>
 
-                  <div className={`col-span-2 sm:col-span-1 p-2.5 rounded-xl border ${isLight ? 'bg-amber-50/60 border-amber-200/80' : 'bg-stone-900 border-stone-800'}`}>
-                    <div className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400 text-[10px] uppercase font-bold tracking-wider">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <div className={`p-2.5 rounded-xl border text-center ${
+                    isLight ? 'bg-amber-50/70 border-amber-200 text-stone-900' : 'bg-stone-900 border-stone-800 text-stone-100'
+                  }`}>
+                    <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
+                      <ShieldCheck className="w-3 h-3" />
                       <span>Punti Fedeltà</span>
                     </div>
-                    <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 mt-0.5">
-                      {profile?.punti_fedelta || profile?.loyaltyPoints || 0} pt
+                    <div className="text-base sm:text-lg font-black text-amber-500 mt-0.5">
+                      {profile?.punti_fedelta || profile?.loyaltyPoints || 100} pt
                     </div>
                   </div>
                 </div>
 
-                {/* Banner esito scansione foto */}
                 {imageScanSuccess && (
-                  <div className="mt-3 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                  <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>{imageScanSuccess}</span>
                   </div>
                 )}
                 {imageScanError && (
-                  <div className="mt-3 p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <div className="mt-3 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
                     <span>{imageScanError}</span>
                   </div>
@@ -336,25 +399,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           <form onSubmit={handleSalva} className="space-y-6">
 
             {/* SEZIONE 1: DATI ANAGRAFICI */}
-            <div
-              className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
-                isLight ? 'bg-white border-stone-200' : 'bg-stone-950/70 border-stone-800'
-              }`}
-            >
-              <div className="flex items-center gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
-                <User className="w-4 h-4 text-amber-500" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
-                  Dati Anagrafici & Identificativi
-                </h4>
+            <div className={cardSectionClass}>
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-amber-500" />
+                  <h4 className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-stone-800' : 'text-stone-200'}`}>
+                    Dati Anagrafici & Identificativi
+                  </h4>
+                </div>
               </div>
 
               {/* Email registrazione: NON MODIFICABILE */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                  <label className={labelClass}>
                     Email di Registrazione (Non Modificabile)
                   </label>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-stone-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-500 font-bold">
                     <Lock className="w-3 h-3" /> Bloccata per sicurezza
                   </span>
                 </div>
@@ -365,14 +426,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={profile?.email || user?.email || ''}
                     disabled
                     readOnly
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 text-xs font-mono cursor-not-allowed select-none"
+                    className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-mono cursor-not-allowed select-none ${readOnlyBgClass}`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Nome *
                   </label>
                   <input
@@ -380,12 +441,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     required
                     value={formData.nome || ''}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Cognome *
                   </label>
                   <input
@@ -393,28 +454,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     required
                     value={formData.cognome || ''}
                     onChange={(e) => setFormData({ ...formData, cognome: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Sesso *
                   </label>
                   <select
                     value={formData.sesso || 'M'}
                     onChange={(e) => setFormData({ ...formData, sesso: e.target.value as 'M' | 'F' })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 cursor-pointer ${inputBgClass}`}
                   >
-                    <option value="M">Maschio (M)</option>
-                    <option value="F">Femmina (F)</option>
+                    <option value="M" className="text-stone-900 bg-white">Maschio (M)</option>
+                    <option value="F" className="text-stone-900 bg-white">Femmina (F)</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Data di Nascita *
                   </label>
                   <input
@@ -422,12 +483,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     required
                     value={formData.data_nascita || ''}
                     onChange={(e) => setFormData({ ...formData, data_nascita: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
                 <div>
-                  {/* Comune di nascita con showCap={false} */}
                   <ComuneIstatPicker
                     label="Comune di Nascita"
                     required
@@ -435,47 +495,74 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.comune_nascita || ''}
                     provinceSigla={formData.provincia_nascita}
                     onSelect={(comune) => {
-                      setFormData({
-                        ...formData,
-                        comune_nascita: comune.nome,
-                        provincia_nascita: comune.sigla
+                      setFormData((prev) => {
+                        const updated = {
+                          ...prev,
+                          comune_nascita: comune.nome,
+                          provincia_nascita: comune.sigla
+                        };
+                        // Autocalcolo CF se abbiamo i dati anagrafici
+                        if (updated.nome && updated.cognome && updated.data_nascita) {
+                          const autoCf = calcolaCodiceFiscale({
+                            nome: updated.nome,
+                            cognome: updated.cognome,
+                            data_nascita: updated.data_nascita,
+                            sesso: (updated.sesso as 'M' | 'F') || 'M',
+                            codiceCatastale: comune.codiceCatastale
+                          });
+                          if (autoCf) {
+                            updated.codice_fiscale = autoCf;
+                          }
+                        }
+                        return updated;
                       });
                     }}
                   />
                 </div>
               </div>
 
-              {/* Codice fiscale o passaporto */}
+              {/* Codice fiscale o passaporto con pulsante di calcolo */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
-                  Codice Fiscale / Documento
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className={labelClass}>
+                    Codice Fiscale / Documento
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAutoCalcolaCF}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 hover:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    <Calculator className="w-3 h-3" />
+                    <span>Calcola / Verifica</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={formData.codice_fiscale || ''}
                   onChange={(e) => setFormData({ ...formData, codice_fiscale: e.target.value.toUpperCase() })}
-                  placeholder="Es. RSSMRA85M01H501Z"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs font-mono uppercase focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  placeholder="Es. CMRDGI59L29D969Z"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold uppercase focus:outline-none focus:ring-2 ${inputBgClass}`}
                 />
+                {cfCalculationNotice && (
+                  <p className="mt-1 text-[11px] text-amber-500 font-medium">
+                    {cfCalculationNotice}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* SEZIONE 2: RESIDENZA */}
-            <div
-              className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
-                isLight ? 'bg-white border-stone-200' : 'bg-stone-950/70 border-stone-800'
-              }`}
-            >
+            <div className={cardSectionClass}>
               <div className="flex items-center gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
                 <MapPin className="w-4 h-4 text-amber-500" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-stone-800' : 'text-stone-200'}`}>
                   Residenza Anagrafica
                 </h4>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-3">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Indirizzo Residenza *
                   </label>
                   <input
@@ -484,12 +571,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.indirizzo || ''}
                     onChange={(e) => setFormData({ ...formData, indirizzo: e.target.value })}
                     placeholder="Via, Piazza o Corso"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Civico *
                   </label>
                   <input
@@ -498,7 +585,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.numero_civico || ''}
                     onChange={(e) => setFormData({ ...formData, numero_civico: e.target.value })}
                     placeholder="Es. 25/A"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
               </div>
@@ -522,7 +609,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Provincia (Auto)
                   </label>
                   <input
@@ -531,13 +618,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     disabled
                     value={formData.provincia || ''}
                     placeholder="Sigla prov."
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 text-xs font-mono cursor-not-allowed select-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold cursor-not-allowed select-none ${readOnlyBgClass}`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                <label className={labelClass}>
                   CAP Residenza *
                 </label>
                 <input
@@ -547,27 +634,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   value={formData.cap || ''}
                   onChange={(e) => setFormData({ ...formData, cap: e.target.value })}
                   placeholder="Es. 44042"
-                  className="w-full sm:w-48 px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className={`w-full sm:w-48 px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 ${inputBgClass}`}
                 />
               </div>
             </div>
 
             {/* SEZIONE 3: RECAPITI E PREFERENZA CONTATTO */}
-            <div
-              className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
-                isLight ? 'bg-white border-stone-200' : 'bg-stone-950/70 border-stone-800'
-              }`}
-            >
+            <div className={cardSectionClass}>
               <div className="flex items-center gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
                 <Phone className="w-4 h-4 text-amber-500" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-stone-800' : 'text-stone-200'}`}>
                   Recapiti & Canali di Contatto
                 </h4>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Cellulare Principale *
                   </label>
                   <input
@@ -583,12 +666,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                       });
                     }}
                     placeholder="Es. 338 1234567"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                  <label className={labelClass}>
                     Email Alternativa / Secondaria
                   </label>
                   <input
@@ -596,13 +679,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.email_secondaria || ''}
                     onChange={(e) => setFormData({ ...formData, email_secondaria: e.target.value })}
                     placeholder="altra.email@esempio.it"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
               </div>
 
               {/* Checkbox WhatsApp */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+              <div className={`p-3 rounded-xl border flex items-start gap-3 ${
+                isLight ? 'bg-amber-50 border-amber-200' : 'bg-amber-500/10 border-amber-500/30'
+              }`}>
                 <input
                   type="checkbox"
                   id="whatsapp-check"
@@ -611,19 +696,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   className="mt-0.5 w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500 cursor-pointer"
                 />
                 <label htmlFor="whatsapp-check" className="text-xs cursor-pointer select-none">
-                  <span className="font-bold text-stone-900 dark:text-stone-100">
+                  <span className={`font-bold ${isLight ? 'text-stone-900' : 'text-white'}`}>
                     È il numero WhatsApp?
                   </span>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                  <p className={`text-[11px] mt-0.5 ${isLight ? 'text-stone-600' : 'text-stone-300'}`}>
                     Se selezionato, imposta automaticamente lo stesso recapito anche per i messaggi diretti WhatsApp.
                   </p>
                 </label>
               </div>
 
-              {/* Numero secondario se WhatsApp è falso o modificabile */}
+              {/* Numero secondario se WhatsApp è disattivato */}
               {!formData.is_whatsapp && (
                 <div className="space-y-1 animate-in fade-in duration-150">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <label className={labelClass}>
                     Numero Cellulare Secondario (WhatsApp o Altro)
                   </label>
                   <input
@@ -631,14 +716,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.cellulare_secondario || ''}
                     onChange={(e) => setFormData({ ...formData, cellulare_secondario: e.target.value })}
                     placeholder="Es. 340 9876543"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
               )}
 
               {/* Preferenza di contatto: 1..5 */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-1">
+                <label className={labelClass}>
                   Canale di Contatto Preferito *
                 </label>
                 <select
@@ -649,26 +734,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                       preferenza_contatto: Number(e.target.value) as 1 | 2 | 3 | 4 | 5
                     })
                   }
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 cursor-pointer ${inputBgClass}`}
                 >
-                  <option value={1}>1 - Email Principale ({profile?.email || user?.email || 'registrazione'})</option>
-                  <option value={2}>2 - Messaggio WhatsApp</option>
-                  <option value={3}>3 - Email Alternativa / Secondaria</option>
-                  <option value={4}>4 - Chiamata Cellulare Principale</option>
-                  <option value={5}>5 - Chiamata Cellulare Secondario</option>
+                  <option value={1} className="text-stone-900 bg-white">1 - Email Principale ({profile?.email || user?.email || 'registrazione'})</option>
+                  <option value={2} className="text-stone-900 bg-white">2 - Messaggio WhatsApp</option>
+                  <option value={3} className="text-stone-900 bg-white">3 - Email Alternativa / Secondaria</option>
+                  <option value={4} className="text-stone-900 bg-white">4 - Chiamata Cellulare Principale</option>
+                  <option value={5} className="text-stone-900 bg-white">5 - Chiamata Cellulare Secondario</option>
                 </select>
               </div>
             </div>
 
             {/* SEZIONE 4: CONSEGNA ORDINI & NOTE PER IL CORRIERE */}
-            <div
-              className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
-                isLight ? 'bg-white border-stone-200' : 'bg-stone-950/70 border-stone-800'
-              }`}
-            >
+            <div className={cardSectionClass}>
               <div className="flex items-center gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
                 <Truck className="w-4 h-4 text-amber-500" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-stone-800' : 'text-stone-200'}`}>
                   Istruzioni di Consegna & Note per il Corriere
                 </h4>
               </div>
@@ -676,22 +757,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               {/* Indirizzo per il corriere con suggerimenti */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <label className={labelClass}>
                     Indirizzo Specifico per il Corriere
                   </label>
-                  <span className="text-[10px] text-stone-400">Opzionale se diverso da residenza</span>
+                  <span className={`text-[10px] ${isLight ? 'text-stone-500' : 'text-stone-400'}`}>
+                    Opzionale se diverso da residenza
+                  </span>
                 </div>
                 <input
                   type="text"
                   value={formData.indirizzo_corriere || ''}
                   onChange={(e) => setFormData({ ...formData, indirizzo_corriere: e.target.value })}
                   placeholder="Es. Via Roma 1, Città di Castello, 06012, PG"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                 />
 
                 {/* Tip con indirizzi di esempio cliccabili */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-stone-500 dark:text-stone-400">
-                  <span className="font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className={`font-semibold flex items-center gap-1 ${isLight ? 'text-stone-600' : 'text-stone-300'}`}>
                     <HelpCircle className="w-3 h-3 text-amber-500" /> Esempi rapidi:
                   </span>
                   <button
@@ -702,7 +785,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                         indirizzo_corriere: 'Via Roma 1, Città di Castello, 06012, PG'
                       })
                     }
-                    className="px-2 py-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/40 text-[10px] border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
+                    className={`px-2 py-0.5 rounded-lg text-[10px] border transition-colors cursor-pointer ${
+                      isLight
+                        ? 'bg-stone-100 hover:bg-amber-100 text-stone-700 border-stone-300'
+                        : 'bg-stone-800 hover:bg-amber-500/20 text-stone-200 border-stone-700'
+                    }`}
                   >
                     Via Roma 1, Città di Castello, 06012, PG
                   </button>
@@ -714,7 +801,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                         indirizzo_corriere: 'Via Roma 1, Città di Castello, 06012, PG, presso il distributore IP'
                       })
                     }
-                    className="px-2 py-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/40 text-[10px] border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
+                    className={`px-2 py-0.5 rounded-lg text-[10px] border transition-colors cursor-pointer ${
+                      isLight
+                        ? 'bg-stone-100 hover:bg-amber-100 text-stone-700 border-stone-300'
+                        : 'bg-stone-800 hover:bg-amber-500/20 text-stone-200 border-stone-700'
+                    }`}
                   >
                     ...presso il distributore IP
                   </button>
@@ -724,15 +815,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               {/* Orario di consegna per il corriere con avviso */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <label className={labelClass}>
                     Fascia Oraria di Consegna Preferita
                   </label>
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-stone-400">Suggerito:</span>
+                    <span className={`text-[10px] ${isLight ? 'text-stone-500' : 'text-stone-400'}`}>Suggerito:</span>
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, orario_consegna_corriere: '16.00-18.30' })}
-                      className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold hover:bg-amber-200 transition-colors cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-amber-500 text-stone-950 text-[10px] font-bold hover:bg-amber-400 transition-colors cursor-pointer"
                     >
                       16.00-18.30
                     </button>
@@ -746,12 +837,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     value={formData.orario_consegna_corriere || ''}
                     onChange={(e) => setFormData({ ...formData, orario_consegna_corriere: e.target.value })}
                     placeholder="Es. 16.00-18.30"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${inputBgClass}`}
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-300 bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                <div className="flex items-center gap-2 text-[11px] text-amber-500 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
                   <span>
                     <strong>Avviso:</strong> L&apos;orario indicato costituisce una preferenza non vincolante per il corriere espresso ed è subordinato ai percorsi logistici del vettore.
                   </span>
@@ -761,13 +852,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               {/* Note aggiuntive per il corriere */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <label className={labelClass}>
                     Note Aggiuntive per il Corriere
                   </label>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, note_corriere: 'Lasciare dietro la siepe' })}
-                    className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    className="text-[10px] text-amber-500 hover:underline cursor-pointer font-bold"
                   >
                     Esempio: &quot;lasciare dietro la siepe&quot;
                   </button>
@@ -777,20 +868,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   value={formData.note_corriere || ''}
                   onChange={(e) => setFormData({ ...formData, note_corriere: e.target.value })}
                   placeholder="Es. Citofono Rossi, lasciare dietro la siepe o presso la portineria se assente"
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 resize-none ${inputBgClass}`}
                 />
               </div>
             </div>
 
             {/* ERRORI O CONFERME DI SALVATAGGIO */}
             {saveSuccess && (
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Profilo aggiornato e sincronizzato con successo nel database!</span>
+                <span className="font-bold">Profilo salvato e sincronizzato con successo nel database!</span>
               </div>
             )}
             {errorMessage && (
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
@@ -801,21 +892,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                  isLight
+                    ? 'border-stone-300 text-stone-700 hover:bg-stone-100'
+                    : 'border-stone-700 text-stone-300 hover:bg-stone-800'
+                }`}
               >
                 Chiudi
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSaving ? (
                   <div className="w-3.5 h-3.5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Save className="w-3.5 h-3.5" />
                 )}
-                <span>{isSaving ? 'Salvataggio in corso...' : 'Salva Modifiche Profilo'}</span>
+                <span>{isSaving ? 'Salvataggio...' : 'Salva Modifiche Profilo'}</span>
               </button>
             </div>
           </form>
