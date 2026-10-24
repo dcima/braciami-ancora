@@ -331,6 +331,13 @@ export const FirestoreService = {
   },
 
   /**
+   * Alias per avviare il seeding completo di tutte le collezioni Firebase
+   */
+  async seedDatabaseIfEmpty() {
+    return this.seedInitialDatabase();
+  },
+
+  /**
    * Fetch all order headers from Firestore
    */
   async getOrderHeaders(): Promise<OrderHeader[]> {

@@ -132,5 +132,23 @@ service cloud.firestore {
       allow create: if request.resource.data.email is string;
       allow read, update, delete: if isAdmin();
     }
+
+    // Local Grocery Stores Competitor Monitoring (raggio 30km da Cento FE)
+    match /local_grocery_stores_30km/{storeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Scraping Schedule Jobs
+    match /scraping_jobs/{jobId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Configurazione avanzata (slidings, accessoAdmin)
+    match /configurazione/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
