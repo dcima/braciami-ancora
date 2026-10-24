@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-export const RECAPTCHA_SITE_KEY = '6LfR3fwtAAAAAB2uzVV-ZkLQ_KhH5tHD6V6a8j1J';
+export const RECAPTCHA_SITE_KEY = '6LezH_8tAAAAAFEZSCw7gJOltuCCob7xjnJxZkAN';
 
 /**
  * Execute Google reCAPTCHA Enterprise and return a verification token
