@@ -1,0 +1,283 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile & Administrative Data",
+      "description": "Complete user entity with administrative and fiscal attributes, plus role designation (0=client, 1=admin)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID or unique client ID" },
+        "nome": { "type": "string", "maxLength": 100, "description": "First name" },
+        "cognome": { "type": "string", "maxLength": 100, "description": "Last name" },
+        "data_nascita": { "type": "string", "maxLength": 15, "description": "Birth date (YYYY-MM-DD)" },
+        "codice_fiscale": { "type": "string", "maxLength": 20, "description": "Tax code / Fiscal ID" },
+        "indirizzo": { "type": "string", "maxLength": 200, "description": "Street name" },
+        "numero_civico": { "type": "string", "maxLength": 20, "description": "Street number" },
+        "cap": { "type": "string", "maxLength": 15, "description": "Postal code" },
+        "provincia": { "type": "string", "maxLength": 10, "description": "Province code (e.g. FE, BO, MO)" },
+        "codice_nazione": { "type": "string", "maxLength": 10, "description": "Country code (IT, DE, NL, SE, DK)" },
+        "email": { "type": "string", "format": "email", "maxLength": 120, "description": "Email address" },
+        "telefono": { "type": "string", "maxLength": 35, "description": "Phone or mobile number" },
+        "note": { "type": "string", "maxLength": 500, "description": "Administrative delivery notes" },
+        "tipo_utente": { "type": "number", "description": "User type: 0 = cliente, 1 = amministratore" },
+        "punti_fedelta": { "type": "number", "description": "Accumulated loyalty points" },
+        "totale_speso": { "type": "number", "description": "Total spend in Euros" },
+        "numero_ordini": { "type": "number", "description": "Total count of orders placed" },
+        "is_otp_guest": { "type": "boolean", "description": "Flag for instant OTP guest checkouts" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Registration timestamp" }
+      },
+      "required": ["uid", "email", "tipo_utente"]
+    },
+    "product": {
+      "title": "Product Item with Multilingual Content",
+      "description": "Artisan food catalog item featuring local Ferrarese specialties and classic Italian staples",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Product identifier" },
+        "name": { "type": "string", "maxLength": 150, "description": "Base name (Italian)" },
+        "name_translations": { "type": "object", "description": "Multilingual translations map" },
+        "description": { "type": "string", "maxLength": 600, "description": "Base description" },
+        "description_translations": { "type": "object", "description": "Multilingual descriptions" },
+        "category": { "type": "string", "description": "Category slug" },
+        "price": { "type": "number", "description": "Price in Euros" },
+        "unit": { "type": "string", "maxLength": 30, "description": "Unit of measure (kg, pezzo, conf)" },
+        "imageUrl": { "type": "string", "description": "Image asset path or URL" },
+        "curator": { "type": "string", "enum": ["Manuel", "Samanta", "Entrambi"], "description": "Curating artisan" },
+        "isAvailable": { "type": "boolean", "description": "In stock flag" },
+        "isTipicoFerrarese": { "type": "boolean", "description": "Traditional Ferrara specialty flag" },
+        "stockQuantity": { "type": "number", "description": "Available stock quantity" },
+        "heatScale": { "type": "number", "description": "Grill flame intensity 1-5" },
+        "dryAgedDays": { "type": "number", "description": "Dry aging days" },
+        "origin": { "type": "string", "maxLength": 100, "description": "Territory origin e.g. Cento (FE)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "category", "price"]
+    },
+    "order_header": {
+      "title": "Order Header (Testata Ordine)",
+      "description": "Master header for customer orders with currency, delivery type, lifecycle status, discounts, notes, and Google Meet link",
+      "type": "object",
+      "properties": {
+        "numero_ordine": { "type": "string", "maxLength": 50, "description": "Unique order code" },
+        "data": { "type": "string", "format": "date-time", "description": "Creation ISO date" },
+        "id_cliente": { "type": "string", "maxLength": 128, "description": "Customer UID or reference" },
+        "customerName": { "type": "string", "maxLength": 120, "description": "Customer display name" },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 120, "description": "Customer email" },
+        "customerPhone": { "type": "string", "maxLength": 35, "description": "Customer phone" },
+        "id_valuta": { "type": "string", "maxLength": 10, "description": "Currency code e.g. EUR, USD, GBP, CHF" },
+        "tasso_cambio": { "type": "number", "description": "Exchange rate relative to EUR" },
+        "codice_sconto": { "type": "string", "maxLength": 50, "description": "Applied discount code" },
+        "codice_promozione": { "type": "string", "maxLength": 50, "description": "Applied promo code" },
+        "tipo_delivery": { "type": "string", "maxLength": 60, "description": "Delivery method ID" },
+        "stato_ordine": {
+          "type": "string",
+          "enum": [
+            "in_lavorazione",
+            "confermato",
+            "rifiutato",
+            "rimborsato",
+            "in_preparazione",
+            "in_spedizione",
+            "spedito",
+            "ricevuto_feedback"
+          ],
+          "description": "Lifecycle state of the order"
+        },
+        "totale_euro": { "type": "number", "description": "Grand total in EUR" },
+        "totale_valuta_cliente": { "type": "number", "description": "Grand total in customer currency" },
+        "note": { "type": "string", "maxLength": 600, "description": "Order header notes" },
+        "meet_link": { "type": "string", "maxLength": 250, "description": "Google Meet video call link for gourmet consultation" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["numero_ordine", "data", "id_cliente", "id_valuta", "stato_ordine", "totale_euro"]
+    },
+    "order_detail": {
+      "title": "Order Detail (Dettaglio Ordine)",
+      "description": "Itemized line item for an order with product, quantity, dual currency pricing, discounts, and preparation notes",
+      "type": "object",
+      "properties": {
+        "id_dettaglio": { "type": "string", "maxLength": 60, "description": "Line item unique ID" },
+        "id_ordine": { "type": "string", "maxLength": 50, "description": "Foreign key to order_header.numero_ordine" },
+        "id_prodotto": { "type": "string", "maxLength": 60, "description": "Product ID" },
+        "nome_prodotto": { "type": "string", "maxLength": 150, "description": "Product title" },
+        "quantita": { "type": "number", "description": "Quantity purchased" },
+        "importo_euro": { "type": "number", "description": "Line total in EUR" },
+        "importo_valuta_cliente": { "type": "number", "description": "Line total in customer currency" },
+        "codice_sconto": { "type": "string", "maxLength": 50, "description": "Line discount code" },
+        "codice_promozione": { "type": "string", "maxLength": 50, "description": "Line promo code" },
+        "note": { "type": "string", "maxLength": 400, "description": "Line preparation notes (e.g. cottura, sottovuoto)" }
+      },
+      "required": ["id_dettaglio", "id_ordine", "id_prodotto", "quantita", "importo_euro"]
+    },
+    "delivery_type": {
+      "title": "Delivery Option",
+      "description": "Delivery logistics options: in store pickup, local delivery, refrigerated national/EU courier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 50, "description": "Unique delivery type key" },
+        "nome": { "type": "string", "maxLength": 100, "description": "Delivery title" },
+        "costo_euro": { "type": "number", "description": "Standard delivery fee in EUR" },
+        "tempo_stimato": { "type": "string", "maxLength": 60, "description": "Estimated timeframe" },
+        "istruzioni": { "type": "string", "maxLength": 300, "description": "Instructions for customer" },
+        "attivo": { "type": "boolean", "description": "Is available" }
+      },
+      "required": ["id", "nome", "costo_euro", "attivo"]
+    },
+    "order_message": {
+      "title": "Order Lifecycle Message",
+      "description": "Direct communication between store and customer regarding an order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 60, "description": "Message ID" },
+        "id_ordine": { "type": "string", "maxLength": 50, "description": "Order reference" },
+        "sender": { "type": "string", "enum": ["bottega", "cliente"], "description": "Sender party" },
+        "sender_name": { "type": "string", "maxLength": 80, "description": "Name of sender" },
+        "testo": { "type": "string", "maxLength": 800, "description": "Message body" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time sent" },
+        "tipo": { "type": "string", "enum": ["testo", "stato", "meet_invite", "email_sent"], "description": "Message category" }
+      },
+      "required": ["id", "id_ordine", "sender", "testo", "timestamp"]
+    },
+    "order_email": {
+      "title": "Order Transactional Email Log",
+      "description": "Log of emails sent to customer throughout order lifecycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 60, "description": "Email log ID" },
+        "id_ordine": { "type": "string", "maxLength": 50, "description": "Order reference" },
+        "destinatario": { "type": "string", "format": "email", "maxLength": 120, "description": "Recipient email" },
+        "oggetto": { "type": "string", "maxLength": 200, "description": "Subject line" },
+        "corpo": { "type": "string", "maxLength": 2000, "description": "Email body content" },
+        "data_invio": { "type": "string", "format": "date-time", "description": "Sent timestamp" },
+        "stato_innescato": { "type": "string", "maxLength": 50, "description": "Triggering order state" }
+      },
+      "required": ["id", "id_ordine", "destinatario", "oggetto", "corpo", "data_invio"]
+    },
+    "promozione": {
+      "title": "Marketing Promotion",
+      "description": "Seasonal and regional promotions for bottega products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Promotion ID" },
+        "titolo": { "type": "string", "maxLength": 150, "description": "Promotion title" },
+        "titolo_translations": { "type": "object", "description": "Localized titles" },
+        "descrizione": { "type": "string", "maxLength": 400, "description": "Description" },
+        "badge": { "type": "string", "maxLength": 50, "description": "Badge label" },
+        "sconto_percentuale": { "type": "number", "description": "Percentage discount" },
+        "valido_da": { "type": "string", "description": "Start date" },
+        "valido_a": { "type": "string", "description": "End date" },
+        "attivo": { "type": "boolean", "description": "Active flag" }
+      },
+      "required": ["id", "titolo", "attivo"]
+    },
+    "sconto": {
+      "title": "Coupon & Discount Code",
+      "description": "Vouchers and discount codes for customer checkout",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Coupon ID" },
+        "codice": { "type": "string", "maxLength": 30, "description": "Coupon code string (e.g. BENVENUTO5)" },
+        "tipo": { "type": "string", "enum": ["percentuale", "fisso"], "description": "Discount calculation type" },
+        "valore": { "type": "number", "description": "Discount numerical value" },
+        "spesa_minima": { "type": "number", "description": "Minimum basket total" },
+        "descrizione": { "type": "string", "maxLength": 200, "description": "Terms summary" },
+        "attivo": { "type": "boolean", "description": "Active state" },
+        "utilizzi_totali": { "type": "number", "description": "Count of times redeemed" }
+      },
+      "required": ["id", "codice", "tipo", "valore", "attivo"]
+    },
+    "translation": {
+      "title": "Multilingual Translation Dictionary",
+      "description": "Stored language bundle containing key-value pairs for all 9 supported languages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Language code (e.g. it_IT, en_US, de_DE)" },
+        "locale": { "type": "string", "maxLength": 10, "description": "Language code" },
+        "label": { "type": "string", "maxLength": 50, "description": "Human readable language label" },
+        "strings": { "type": "object", "description": "Key-value localized strings" }
+      },
+      "required": ["id", "locale"]
+    },
+    "user_interface": {
+      "title": "User Interface Element Multilingual Text",
+      "description": "Stores translations for every individual UI element identified by its unique element ID",
+      "type": "object",
+      "properties": {
+        "element_id": { "type": "string", "maxLength": 100, "description": "Unique UI element identifier" },
+        "category": { "type": "string", "maxLength": 50, "description": "UI section: nav, hero, catalog, cart, checkout, orders, admin" },
+        "it": { "type": "string", "maxLength": 800, "description": "Italian original text" },
+        "en": { "type": "string", "maxLength": 800, "description": "English translation" },
+        "de": { "type": "string", "maxLength": 800, "description": "German translation" },
+        "fr": { "type": "string", "maxLength": 800, "description": "French translation" },
+        "es": { "type": "string", "maxLength": 800, "description": "Spanish translation" },
+        "nl": { "type": "string", "maxLength": 800, "description": "Dutch translation" },
+        "sv": { "type": "string", "maxLength": 800, "description": "Swedish translation" },
+        "da": { "type": "string", "maxLength": 800, "description": "Danish translation" },
+        "description": { "type": "string", "maxLength": 200, "description": "Element description" }
+      },
+      "required": ["element_id", "it", "en"]
+    },
+    "store_config": {
+      "title": "Store Global Configuration",
+      "description": "Store operational parameters including max delivery distance for fresh perishable food",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Config identifier" },
+        "max_fresh_delivery_km": { "type": "number", "description": "Maximum radius in KM for hot/fresh grilled dishes" },
+        "shop_lat": { "type": "number", "description": "Shop latitude" },
+        "shop_lng": { "type": "number", "description": "Shop longitude" },
+        "shop_address": { "type": "string", "maxLength": 200, "description": "Bottega physical address in Cento FE" }
+      },
+      "required": ["id", "max_fresh_delivery_km"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles, fiscal records, and customer loyalty accounts"
+    },
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "Artisan food catalog including Ferrara delicacies and Italian essentials"
+    },
+    "/order_headers/{orderId}": {
+      "schema": "order_header",
+      "description": "Order headers with currency, status lifecycle, discounts, notes, and Google Meet integration"
+    },
+    "/order_details/{detailId}": {
+      "schema": "order_detail",
+      "description": "Itemized order lines linked to order_header with dual currency and preparation instructions"
+    },
+    "/delivery_types/{deliveryId}": {
+      "schema": "delivery_type",
+      "description": "Delivery logistics options"
+    },
+    "/order_messages/{messageId}": {
+      "schema": "order_message",
+      "description": "Customer-bottega real-time communication messages"
+    },
+    "/order_emails/{emailId}": {
+      "schema": "order_email",
+      "description": "Transactional email logs for order lifecycle notifications"
+    },
+    "/promozioni/{promoId}": {
+      "schema": "promozione",
+      "description": "Active marketing promotions and seasonal offers"
+    },
+    "/sconti/{scontoId}": {
+      "schema": "sconto",
+      "description": "Discount coupons and promotion codes"
+    },
+    "/translations/{localeId}": {
+      "schema": "translation",
+      "description": "Language localization dictionaries"
+    },
+    "/user_interface/{elementId}": {
+      "schema": "user_interface",
+      "description": "Granular UI elements multilingual dictionary table"
+    },
+    "/store_config/{configId}": {
+      "schema": "store_config",
+      "description": "Store distance and hygiene policy settings"
+    }
+  }
+}

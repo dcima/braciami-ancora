@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common security helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'diego.cimarosa@gmail.com' ||
+        request.auth.token.email == 'samantamanderioli083@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Users Collection (Utenti: 0 = cliente, 1 = amministratore)
+    match /users/{userId} {
+      allow get, list: if true;
+      allow create, update: if request.resource.data.email is string &&
+        (request.resource.data.tipo_utente == 0 || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Products Collection (Catalogo, Ferrara & Italia)
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Order Headers Collection (Testata Ordine con valuta, delivery, stato ciclo di vita)
+    match /order_headers/{orderId} {
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.id_cliente == request.auth.uid);
+      allow create: if request.resource.data.totale_euro is number && request.resource.data.totale_euro >= 0;
+      allow update, delete: if isAdmin();
+    }
+
+    // Order Details Collection (Dettaglio Ordine itemized)
+    match /order_details/{detailId} {
+      allow read: if isAdmin() || isSignedIn();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Delivery Types Collection (Tipi di Delivery)
+    match /delivery_types/{deliveryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Order Messages Collection (Messaggistica utente ciclo di vita)
+    match /order_messages/{messageId} {
+      allow read, create: if isAdmin() || isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Order Transactional Emails Collection
+    match /order_emails/{emailId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Legacy Orders Collection (retrocompatibilità)
+    match /orders/{orderId} {
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if request.resource.data.total is number && request.resource.data.total >= 0;
+      allow update, delete: if isAdmin();
+    }
+
+    // Promozioni Collection
+    match /promozioni/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Sconti & Coupon Collection
+    match /sconti/{scontoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Multilingual Translations Collection
+    match /translations/{localeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User Interface Table (user_interface: ogni elemento con ID e traduzioni)
+    match /user_interface/{elementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Store Configuration (distanza massima cibi freschi, coordinate Cento)
+    match /store_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Comuni ISTAT Collection
+    match /comuni/{comuneId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Configuration Collection (es. otp template)
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Newsletter Subscribers Collection
+    match /newsletter/{subscriberId} {
+      allow create: if request.resource.data.email is string;
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

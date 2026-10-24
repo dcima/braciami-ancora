@@ -1,0 +1,6 @@
+{
+  "name": "Braciami ancora - Gastronomia & Brace Cento",
+  "description": "Bottega di alimentari e carne alla brace a Cento (FE) di Manuel e Samanta. Qualità al giusto prezzo: ordina online piatti pronti, carne selezionata e cestini barbecue con consegna a Cento o ritiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

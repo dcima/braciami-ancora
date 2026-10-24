@@ -1,0 +1,431 @@
+import { LocalGroceryStore30Km, Product, ScrapedCompetitorProductRecord, ScrapingScheduleJob } from '../types';
+import { ENRICHED_SEED_PRODUCTS } from './articlesArchitectureData';
+
+interface BaseStoreSeed {
+  id: string;
+  storeName: string;
+  storeType: 'piccola_distribuzione' | 'catena';
+  chainName: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  province: string;
+  region: string;
+  country: string;
+  distanceFromCentoKm: number;
+  lat: number;
+  lng: number;
+  websiteOrCatalogUrl: string;
+  priceMultiplier: number;
+}
+
+const BASE_STORES_30KM: BaseStoreSeed[] = [
+  {
+    id: 'store-cento-conad',
+    storeName: 'Conad Superstore Cento',
+    storeType: 'catena',
+    chainName: 'Conad',
+    address: 'Via Ferrarese 28',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 1.4,
+    lat: 44.7321,
+    lng: 11.2984,
+    websiteOrCatalogUrl: 'https://spesaonline.conad.it/cento',
+    priceMultiplier: 1.06
+  },
+  {
+    id: 'store-cento-coop',
+    storeName: 'Coop Alleanza 3.0 Cento',
+    storeType: 'catena',
+    chainName: 'Coop',
+    address: 'Via Giacomo Matteotti 16',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 1.8,
+    lat: 44.7251,
+    lng: 11.2812,
+    websiteOrCatalogUrl: 'https://www.easycoop.com/cento',
+    priceMultiplier: 1.08
+  },
+  {
+    id: 'store-cento-bennet',
+    storeName: 'Bennet Cento C.C. Il Guercino',
+    storeType: 'catena',
+    chainName: 'Bennet',
+    address: 'Via Bologna 2',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 2.1,
+    lat: 44.7185,
+    lng: 11.2940,
+    websiteOrCatalogUrl: 'https://www.bennet.com/cento',
+    priceMultiplier: 1.05
+  },
+  {
+    id: 'store-cento-lidl',
+    storeName: 'Lidl Cento Via Ferrarese',
+    storeType: 'catena',
+    chainName: 'Lidl',
+    address: 'Via Ferrarese 51',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 1.6,
+    lat: 44.7345,
+    lng: 11.3012,
+    websiteOrCatalogUrl: 'https://www.lidl.it/cento',
+    priceMultiplier: 0.96
+  },
+  {
+    id: 'store-cento-eurospin',
+    storeName: 'Eurospin Cento',
+    storeType: 'catena',
+    chainName: 'Eurospin',
+    address: 'Via Modena 45',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 1.9,
+    lat: 44.7260,
+    lng: 11.2695,
+    websiteOrCatalogUrl: 'https://www.eurospin.it/cento',
+    priceMultiplier: 0.94
+  },
+  {
+    id: 'store-cento-salumeria-guercino',
+    storeName: 'Antica Salumeria & Gastronomia Del Guercino',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Corso Guercino 42',
+    postalCode: '44042',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 0.9,
+    lat: 44.7268,
+    lng: 11.2885,
+    websiteOrCatalogUrl: 'https://botteghecento.it/salumeria-guercino',
+    priceMultiplier: 1.14
+  },
+  {
+    id: 'store-pieve-macelleria-portici',
+    storeName: 'Macelleria & Gastronomia Portici di Pieve',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Via Matteotti 18',
+    postalCode: '40066',
+    city: 'Pieve di Cento',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 3.4,
+    lat: 44.7125,
+    lng: 11.3080,
+    websiteOrCatalogUrl: 'https://botteghepievedicento.it/macelleria-portici',
+    priceMultiplier: 1.12
+  },
+  {
+    id: 'store-renazzo-alimentari',
+    storeName: 'Bottega Alimentare Emiliana Renazzo',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Via di Renazzo 68',
+    postalCode: '44045',
+    city: 'Cento',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 4.8,
+    lat: 44.7620,
+    lng: 11.2830,
+    websiteOrCatalogUrl: 'https://alimentarirenazzo.it',
+    priceMultiplier: 1.09
+  },
+  {
+    id: 'store-castello-argile-sapori',
+    storeName: "Gastronomia & Carni Terre d'Argile",
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Via Giacomo Matteotti 94',
+    postalCode: '40050',
+    city: "Castello d'Argile",
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 7.2,
+    lat: 44.6789,
+    lng: 11.2965,
+    websiteOrCatalogUrl: 'https://terredargilegastronomia.it',
+    priceMultiplier: 1.11
+  },
+  {
+    id: 'store-santagostino-conad',
+    storeName: "Conad Terre del Reno (Sant'Agostino)",
+    storeType: 'catena',
+    chainName: 'Conad',
+    address: 'Via Statale 110',
+    postalCode: '44047',
+    city: 'Terre del Reno',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 8.5,
+    lat: 44.7912,
+    lng: 11.3845,
+    websiteOrCatalogUrl: 'https://spesaonline.conad.it/terredelreno',
+    priceMultiplier: 1.04
+  },
+  {
+    id: 'store-persiceto-coop',
+    storeName: 'Coop Alleanza 3.0 San Giovanni in Persiceto',
+    storeType: 'catena',
+    chainName: 'Coop',
+    address: 'Via Bologna 11',
+    postalCode: '40017',
+    city: 'San Giovanni in Persiceto',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 12.6,
+    lat: 44.6395,
+    lng: 11.1850,
+    websiteOrCatalogUrl: 'https://www.easycoop.com/persiceto',
+    priceMultiplier: 1.07
+  },
+  {
+    id: 'store-persiceto-dispensa',
+    storeName: 'Dispensa Emiliana Persicetana',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Corso Italia 54',
+    postalCode: '40017',
+    city: 'San Giovanni in Persiceto',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 12.4,
+    lat: 44.6408,
+    lng: 11.1892,
+    websiteOrCatalogUrl: 'https://dispensapersicetana.it',
+    priceMultiplier: 1.15
+  },
+  {
+    id: 'store-crevalcore-conad',
+    storeName: 'Conad Superstore Crevalcore',
+    storeType: 'catena',
+    chainName: 'Conad',
+    address: 'Via Giacomo Matteotti 190',
+    postalCode: '40014',
+    city: 'Crevalcore',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 13.8,
+    lat: 44.7210,
+    lng: 11.1490,
+    websiteOrCatalogUrl: 'https://spesaonline.conad.it/crevalcore',
+    priceMultiplier: 1.05
+  },
+  {
+    id: 'store-sanpietro-despar',
+    storeName: 'Eurospar / Despar San Pietro in Casale',
+    storeType: 'catena',
+    chainName: 'Despar',
+    address: 'Via Asia 12',
+    postalCode: '40018',
+    city: 'San Pietro in Casale',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 14.9,
+    lat: 44.6995,
+    lng: 11.4040,
+    websiteOrCatalogUrl: 'https://www.despar.it/sanpietroincasale',
+    priceMultiplier: 1.03
+  },
+  {
+    id: 'store-finale-coop',
+    storeName: 'Coop Alleanza 3.0 Finale Emilia',
+    storeType: 'catena',
+    chainName: 'Coop',
+    address: 'Via per Modena 24',
+    postalCode: '41034',
+    city: 'Finale Emilia',
+    province: 'MO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 16.5,
+    lat: 44.8320,
+    lng: 11.2925,
+    websiteOrCatalogUrl: 'https://www.easycoop.com/finale-emilia',
+    priceMultiplier: 1.06
+  },
+  {
+    id: 'store-finale-salumeria-estense',
+    storeName: 'Salumeria Storica Estense Finale Emilia',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Corso Cavour 15',
+    postalCode: '41034',
+    city: 'Finale Emilia',
+    province: 'MO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 16.2,
+    lat: 44.8342,
+    lng: 11.2958,
+    websiteOrCatalogUrl: 'https://salumeriaestense.it',
+    priceMultiplier: 1.13
+  },
+  {
+    id: 'store-bondeno-despar',
+    storeName: 'Interspar Bondeno',
+    storeType: 'catena',
+    chainName: 'Despar',
+    address: 'Via Virgiliana 40',
+    postalCode: '44012',
+    city: 'Bondeno',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 21.4,
+    lat: 44.8890,
+    lng: 11.4155,
+    websiteOrCatalogUrl: 'https://www.despar.it/bondeno',
+    priceMultiplier: 1.02
+  },
+  {
+    id: 'store-ferrara-ipercoop',
+    storeName: 'Ipercoop Il Castello Ferrara',
+    storeType: 'catena',
+    chainName: 'Coop',
+    address: 'Via Giusti 4',
+    postalCode: '44124',
+    city: 'Ferrara',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 27.8,
+    lat: 44.8195,
+    lng: 11.6080,
+    websiteOrCatalogUrl: 'https://www.easycoop.com/ferrara',
+    priceMultiplier: 1.07
+  },
+  {
+    id: 'store-ferrara-volte',
+    storeName: 'Bottega Storica Via delle Volte Ferrara',
+    storeType: 'piccola_distribuzione',
+    chainName: 'Bottega Indipendente',
+    address: 'Via delle Volte 19',
+    postalCode: '44121',
+    city: 'Ferrara',
+    province: 'FE',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 28.4,
+    lat: 44.8325,
+    lng: 11.6210,
+    websiteOrCatalogUrl: 'https://bottegastoricaferrara.it',
+    priceMultiplier: 1.18
+  },
+  {
+    id: 'store-bologna-esselunga',
+    storeName: 'Esselunga Bologna Borgo Panigale',
+    storeType: 'catena',
+    chainName: 'Esselunga',
+    address: 'Via Emilia Ponente 150',
+    postalCode: '40132',
+    city: 'Bologna',
+    province: 'BO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    distanceFromCentoKm: 28.9,
+    lat: 44.5075,
+    lng: 11.2740,
+    websiteOrCatalogUrl: 'https://www.esselungaacasa.it/bologna',
+    priceMultiplier: 1.09
+  }
+];
+
+export function buildLocalGroceryStores30Km(
+  catalogProducts: Product[] = ENRICHED_SEED_PRODUCTS,
+  timestampIso = '2026-10-24T05:30:00.000Z'
+): LocalGroceryStore30Km[] {
+  return BASE_STORES_30KM.map((store, sIdx) => {
+    const scrapedProducts: ScrapedCompetitorProductRecord[] = catalogProducts.map((prod, pIdx) => {
+      const ean =
+        prod.identification?.ean13 ||
+        prod.internationalCodes?.gtin13 ||
+        `80044042${String(pIdx + 101).padStart(5, '0')}`;
+      // Deterministic variance per store & product
+      const variance = ((sIdx * 7 + pIdx * 3) % 11 - 4) * 0.015;
+      const computedPrice = Number(
+        Math.max(1.5, prod.price * (store.priceMultiplier + variance)).toFixed(2)
+      );
+
+      return {
+        id: `${store.id}_${prod.id}`,
+        storeId: store.id,
+        storeName: store.storeName,
+        storeType: store.storeType,
+        chainName: store.chainName,
+        postalCode: store.postalCode,
+        city: store.city,
+        province: store.province,
+        region: store.region,
+        country: store.country,
+        distanceKm: store.distanceFromCentoKm,
+        productId: prod.id,
+        category: prod.category,
+        eanCode: ean,
+        descriptionIt: `${prod.name} — ${prod.weight}`,
+        salePriceEur: computedPrice,
+        ourPriceEur: prod.price,
+        lastScrapedAt: timestampIso
+      };
+    });
+
+    return {
+      ...store,
+      lastScrapedAt: timestampIso,
+      scrapedProducts
+    };
+  });
+}
+
+export const SEED_LOCAL_GROCERY_STORES_30KM: LocalGroceryStore30Km[] = buildLocalGroceryStores30Km();
+
+export const INITIAL_SCRAPING_JOBS: ScrapingScheduleJob[] = [
+  {
+    id: 'job-cento-30km-default',
+    createdAt: '2026-10-24T03:00:00.000Z',
+    maxDistanceKm: 30,
+    postalCode: '44042',
+    city: 'Tutti i Comuni entro 30 km da Cento',
+    province: 'FE / BO / MO',
+    region: 'Emilia-Romagna',
+    country: 'IT',
+    productCategory: 'tutte',
+    searchQuery: '',
+    storeType: 'tutti',
+    frequency: 'giornaliero',
+    status: 'completato',
+    lastRunAt: '2026-10-24T05:30:00.000Z',
+    recordsFoundCount: SEED_LOCAL_GROCERY_STORES_30KM.reduce((acc, s) => acc + s.scrapedProducts.length, 0)
+  }
+];
