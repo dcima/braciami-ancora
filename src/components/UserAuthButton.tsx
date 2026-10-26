@@ -5,6 +5,7 @@ import { useStore } from '../context/StoreContext';
 import { useI18n } from '../i18n/I18nContext';
 import { LogOut, User as UserIcon, Shield, Sparkles, ChevronDown, DoorOpen, UserCheck } from 'lucide-react';
 import { UserProfileModal } from './UserProfileModal';
+import { readUserPhotoFromUsersCollection } from '../firebase/storageService';
 
 interface OAuthProviderMenuItem {
   id: OAuthProviderId;
@@ -110,9 +111,29 @@ export const UserAuthButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProviderMenuOpen, setIsProviderMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isLight = theme === 'chiaro';
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setResolvedPhotoUrl('');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await readUserPhotoFromUsersCollection(user.uid, user.email || undefined);
+        if (!cancelled && res.displayUrl) {
+          setResolvedPhotoUrl(res.displayUrl);
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, user?.email, profile?.photoPath, profile?.photo_url, isProfileOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -197,7 +218,7 @@ export const UserAuthButton: React.FC = () => {
   }
 
   // Logged in: Avatar with dropdown
-  const avatarUrl = profile?.photo_url || user.photoURL;
+  const avatarUrl = profile?.photo_url || resolvedPhotoUrl || user.photoURL;
 
   return (
     <>

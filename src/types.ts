@@ -505,6 +505,7 @@ export interface UserData {
   orario_consegna_corriere?: string;
   note_corriere?: string;
   photo_url?: string;
+  photoPath?: string; // es. "/users_photo/$fileName"
   adminNotificationPreferences?: {
     schemaVersion: 1;
     events: Record<string, boolean>;

@@ -41,6 +41,46 @@ app.post('/api/send-oauth-otp-email', (req, res) => {
   });
 });
 
+// Proxy endpoint to fetch an image from a Web URL and return DataURL + suggested fileName
+app.get('/api/fetch-web-image', async (req, res) => {
+  const rawUrl = String(req.query.url || '').trim();
+  if (!rawUrl || !/^https?:\/\//i.test(rawUrl)) {
+    res.status(400).json({ ok: false, error: 'URL immagine non valido.' });
+    return;
+  }
+  try {
+    const response = await fetch(rawUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BraciamiAncoraBot/1.0)',
+        Accept: 'image/*,*/*;q=0.8'
+      }
+    });
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `Impossibile scaricare l'immagine (HTTP ${response.status}).` });
+      return;
+    }
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString('base64');
+    const mime = contentType.split(';')[0].trim() || 'image/jpeg';
+    const dataUrl = `data:${mime};base64,${base64}`;
+
+    const urlObj = new URL(rawUrl);
+    const rawBaseName = path.basename(urlObj.pathname) || `web_photo_${Date.now()}.jpg`;
+    const cleanFileName = rawBaseName.replace(/[^a-zA-Z0-9._-]/g, '_') || `web_photo_${Date.now()}.jpg`;
+
+    res.json({
+      ok: true,
+      dataUrl,
+      contentType: mime,
+      fileName: cleanFileName
+    });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || 'Errore nel recupero immagine dal web.' });
+  }
+});
+
 // SPA fallback to index.html for all routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));

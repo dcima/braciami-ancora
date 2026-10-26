@@ -1,12 +1,12 @@
 import { AdminProfileModal } from './AdminProfileModal';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../firebase/AuthContext';
 import { useStore } from '../context/StoreContext';
 import { UserData } from '../types';
 import { ComuneIstatPicker } from './ComuneIstatPicker';
 import { validateAndSanitizeProfileImage } from '../utils/imageSecurity';
-import { uploadUserProfilePhoto } from '../firebase/storageService';
+import { uploadUserProfilePhoto, readUserPhotoFromUsersCollection } from '../firebase/storageService';
 import { calcolaCodiceFiscale, validaCodiceFiscale } from '../utils/codiceFiscale';
 import { COMUNI_ISTAT } from '../data/comuniIstatData';
 import {
@@ -65,8 +65,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     indirizzo_corriere: profile?.indirizzo_corriere || '',
     orario_consegna_corriere: profile?.orario_consegna_corriere || '',
     note_corriere: profile?.note_corriere || '',
-    photo_url: profile?.photo_url || user?.photoURL || ''
+    photo_url: profile?.photo_url || user?.photoURL || '',
+    photoPath: profile?.photoPath || ''
   });
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
 
   const [cfCalculationNotice, setCfCalculationNotice] = useState<string | null>(null);
   const [imageScanning, setImageScanning] = useState(false);
@@ -75,6 +77,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // All'apertura del profilo legge dalla collection "users" il campo photoPath e presenta la foto nel profilo
+  useEffect(() => {
+    if (!isOpen || isAdmin || !user?.uid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await readUserPhotoFromUsersCollection(user.uid, user.email || undefined);
+        if (cancelled) return;
+        if (res.photoPath || res.displayUrl) {
+          setFormData((prev) => ({
+            ...prev,
+            photoPath: res.photoPath || prev.photoPath,
+            photo_url: res.displayUrl || prev.photo_url
+          }));
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isAdmin, user?.uid, user?.email]);
 
   if (!isOpen || typeof document === 'undefined') return null;
   if (isAdmin) return <AdminProfileModal isOpen={isOpen} onClose={onClose} />;
@@ -145,6 +169,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       if (!result.valid) {
         setImageScanError(result.error || 'File immagine non valido o non sicuro');
       } else if (result.sanitizedDataUrl) {
+        setSelectedFileName(file.name);
         setFormData((prev) => ({ ...prev, photo_url: result.sanitizedDataUrl }));
         setImageScanSuccess(
           `Immagine verificata con successo (${result.fileSizeKb} KB, ${result.dimensions?.width}x${result.dimensions?.height}px). Metadati rimossi e codice malevolo escluso.`
@@ -159,7 +184,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   };
 
   const handleRemovePhoto = () => {
-    setFormData((prev) => ({ ...prev, photo_url: '' }));
+    setFormData((prev) => ({ ...prev, photo_url: '', photoPath: '' }));
+    setSelectedFileName('');
     setImageScanSuccess(null);
     setImageScanError(null);
   };
@@ -180,23 +206,33 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
     try {
       let finalPhotoUrl = formData.photo_url || '';
+      let finalPhotoPath = formData.photoPath || '';
 
-      // Se la foto è una nuova immagine Base64 sanificata, caricala su Firebase Cloud Storage
+      // Se la foto è una nuova immagine Base64 sanificata, caricala su gs://braciami-ancora.firebasestorage.app/users_photo/$fileName
       if (user?.uid && finalPhotoUrl.startsWith('data:')) {
-        const uploadResult = await uploadUserProfilePhoto(user.uid, finalPhotoUrl);
+        const uploadResult = await uploadUserProfilePhoto(
+          user.uid,
+          finalPhotoUrl,
+          selectedFileName || undefined,
+          user.email || undefined
+        );
         if (uploadResult.downloadUrl) {
           finalPhotoUrl = uploadResult.downloadUrl;
+        }
+        if (uploadResult.photoPath) {
+          finalPhotoPath = uploadResult.photoPath;
         }
       }
 
       const dataToSave: Partial<UserData> = {
         ...formData,
         photo_url: finalPhotoUrl,
+        photoPath: finalPhotoPath,
         cellulare_secondario: formData.is_whatsapp ? formData.telefono : formData.cellulare_secondario
       };
 
       await updateProfileData(dataToSave);
-      setFormData((prev) => ({ ...prev, photo_url: finalPhotoUrl }));
+      setFormData((prev) => ({ ...prev, photo_url: finalPhotoUrl, photoPath: finalPhotoPath }));
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
