@@ -26,6 +26,7 @@ export interface Translations {
 
   // Brand Motto & Store Info
   store_name: string;
+  store_category: string;
   store_motto: string;
   store_motto_quote: string;
   store_address_short: string;
@@ -194,6 +195,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Lingua proposta in base alla provenienza',
 
     store_name: 'Braciami ancora',
+    store_category: 'Spaccio Carni, Salumi, Formaggi',
     store_motto: 'Qualità al giusto prezzo',
     store_motto_quote: '“Qualità al giusto prezzo”',
     store_address_short: 'Via Penzale, 25 · Cento (FE)',
@@ -354,6 +356,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Language proposed based on your region',
 
     store_name: 'Braciami ancora',
+    store_category: 'Meat, Cured Meats & Cheese Shop',
     store_motto: 'Quality at the right price',
     store_motto_quote: '“Quality at the right price”',
     store_address_short: 'Via Penzale, 25 · Cento (FE), Italy',
@@ -514,6 +517,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Langue proposée selon votre localisation',
 
     store_name: 'Braciami ancora',
+    store_category: 'Boucherie, Charcuterie, Fromagerie',
     store_motto: 'La qualité au juste prix',
     store_motto_quote: '« La qualité au juste prix »',
     store_address_short: 'Via Penzale, 25 · Cento (FE), Italie',
@@ -674,6 +678,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Sprache basierend auf Ihrem Standort vorgeschlagen',
 
     store_name: 'Braciami ancora',
+    store_category: 'Fleisch, Wurstwaren und Käse',
     store_motto: 'Qualität zum fairen Preis',
     store_motto_quote: '„Qualität zum fairen Preis“',
     store_address_short: 'Via Penzale, 25 · Cento (FE), Italien',
@@ -834,6 +839,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Idioma sugerido según tu ubicación',
 
     store_name: 'Braciami ancora',
+    store_category: 'Carnicería, Charcutería y Quesos',
     store_motto: 'Calidad al precio justo',
     store_motto_quote: '«Calidad al precio justo»',
     store_address_short: 'Via Penzale, 25 · Cento (FE), Italia',
@@ -994,6 +1000,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: '已根据您的网络位置自动推荐语言',
 
     store_name: 'Braciami ancora',
+    store_category: '鲜肉、腌制肉品和奶酪专卖店',
     store_motto: '高品质，公道价',
     store_motto_quote: '“高品质，公道价”',
     store_address_short: '意大利 琴托 Via Penzale, 25',
@@ -1154,6 +1161,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'アクセス地域に応じて言語を提案しました',
 
     store_name: 'Braciami ancora',
+    store_category: '精肉・加工肉・チーズ専門店',
     store_motto: '最高の品質を適正な価格で',
     store_motto_quote: '「最高の品質を適正な価格で」',
     store_address_short: 'イタリア・チェント Via Penzale, 25',
@@ -1314,6 +1322,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'Язык предложен на основе вашего региона',
 
     store_name: 'Braciami ancora',
+    store_category: 'Магазин мяса, колбас и сыров',
     store_motto: 'Качество по честной цене',
     store_motto_quote: '«Качество по честной цене»',
     store_address_short: 'Виа Пенцале, 25 · Ченто (FE), Италия',
@@ -1474,6 +1483,7 @@ const RAW_TRANSLATIONS: Record<string, Translations> = {
     lang_detected_notice: 'تم اقتراح اللغة بناءً على موقع اتصالك',
 
     store_name: 'Braciami ancora',
+    store_category: 'متجر اللحوم واللحوم المقددة والأجبان',
     store_motto: 'الجودة بالسعر العادل',
     store_motto_quote: '«الجودة بالسعر العادل»',
     store_address_short: 'طريق بينزالي 25 · شينتو (FE)، إيطاليا',
@@ -1619,6 +1629,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     nav_cart: 'Winkelwagen',
     cart_tooltip: 'Winkelwagen',
     store_name: 'Braciami ancora',
+    store_category: 'Vlees, Vleeswaren en Kaas',
     store_address_short: 'Via Penzale, 25 · Cento (FE)',
     store_address_full: 'Via Penzale, 25, 44042 Cento FE'
   },
@@ -1628,6 +1639,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
     nav_cart: 'Varukorg',
     cart_tooltip: 'Varukorg',
     store_name: 'Braciami ancora',
+    store_category: 'Kött, Charkuterier och Ost',
     store_address_short: 'Via Penzale, 25 · Cento (FE)',
     store_address_full: 'Via Penzale, 25, 44042 Cento FE'
   }

@@ -18,7 +18,6 @@ import {
   Activity,
   ChefHat,
   TrendingDown,
-  Globe,
   Snowflake,
   Wine,
   Sparkles,
@@ -39,7 +38,6 @@ export const ProductDetailModal: React.FC = () => {
     language,
     uiText,
     detectedCountry,
-    detectedCountryName,
     estimatedDistanceKm,
     storeConfig,
     unitsOfMeasure
@@ -187,8 +185,7 @@ export const ProductDetailModal: React.FC = () => {
             { id: 'overview', label: uiText('tab_overview', 'Unità & Acquisto'), icon: Package },
             { id: 'origin_codes', label: uiText('tab_codes_origin', 'Codici & Stabilimento'), icon: Factory },
             { id: 'nutrition', label: uiText('tab_nutrition', 'Scheda Nutrizionale'), icon: Activity },
-            { id: 'recipes', label: uiText('tab_recipes', 'Ricette Abbinate'), icon: ChefHat },
-            { id: 'competitors_i18n', label: uiText('tab_comp_i18n', 'Prezzi & Traduzioni Firebase'), icon: Globe }
+            { id: 'recipes', label: uiText('tab_recipes', 'Ricette Abbinate'), icon: ChefHat }
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -217,9 +214,6 @@ export const ProductDetailModal: React.FC = () => {
               {/* Country Unit Conversion Box */}
               <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-amber-900 block">
-                    Calcolo Unità di Misura per {detectedCountryName}
-                  </span>
                   <div className="font-bold text-stone-900 text-xs sm:text-sm mt-0.5">
                     {unitConv.commercialUnitTranslated}:{' '}
                     <span className="font-mono text-amber-800">{unitConv.localizedWeightOrVolume}</span>
@@ -237,7 +231,7 @@ export const ProductDetailModal: React.FC = () => {
               {unitConv.cartonPackInfo && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-700 block">
-                    Seleziona Formato di Vendita (Unità Singola o Scatolone Multiplo):
+                    Seleziona Formato:
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button

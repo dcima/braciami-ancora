@@ -164,7 +164,7 @@ export const UserAuthButton: React.FC = () => {
           <div
             role="menu"
             aria-label={uiText('btn_sign_in_with', 'Accedi con')}
-            className={`absolute right-0 top-full mt-2 w-52 rounded-2xl shadow-2xl border z-[220] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-150 ${
+            className={`absolute left-0 right-auto sm:left-auto sm:right-0 top-full mt-2 w-52 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border z-[220] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-150 ${
               isLight
                 ? 'bg-white border-stone-300 text-stone-900'
                 : 'bg-stone-900 border-stone-700 text-stone-100'
@@ -231,7 +231,7 @@ export const UserAuthButton: React.FC = () => {
 
         {isOpen && (
           <div
-            className={`absolute top-full right-0 mt-2 w-64 rounded-2xl shadow-2xl border z-[200] overflow-hidden py-2 animate-in fade-in zoom-in-95 duration-150 ${
+            className={`absolute top-full left-0 right-auto sm:left-auto sm:right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border z-[200] overflow-hidden py-2 animate-in fade-in zoom-in-95 duration-150 ${
               isLight
                 ? 'bg-white border-stone-300 text-stone-900'
                 : 'bg-stone-900 border-stone-750 text-stone-100'
@@ -266,7 +266,7 @@ export const UserAuthButton: React.FC = () => {
               </div>
 
               {/* Loyalty points banner */}
-              <div
+              {!isAdmin && <div
                 className={`mt-2.5 p-2 rounded-xl flex items-center justify-between text-xs ${
                   isLight ? 'bg-amber-50 text-amber-900' : 'bg-stone-800/80 text-amber-300'
                 }`}
@@ -276,7 +276,7 @@ export const UserAuthButton: React.FC = () => {
                   <span>{uiText('auth_loyalty_points', 'Punti Fedeltà:')}</span>
                 </div>
                 <span className="font-bold">{profile?.punti_fedelta || profile?.loyaltyPoints || 100} pt</span>
-              </div>
+              </div>}
             </div>
 
             {/* Links */}
@@ -291,12 +291,12 @@ export const UserAuthButton: React.FC = () => {
                 }`}
               >
                 <UserCheck className="w-4 h-4 text-amber-500" />
-                <span>{uiText('auth_my_profile', 'Il mio profilo')}</span>
+                <span>{isAdmin ? 'Profilo amministratore' : uiText('auth_my_profile', 'Il mio profilo')}</span>
               </button>
 
               <button
                 onClick={() => {
-                  setActivePage('ordini');
+                  setActivePage(isAdmin ? 'admin-crm' : 'ordini');
                   setIsOpen(false);
                 }}
                 className={`w-full px-4 py-2 text-left text-xs flex items-center gap-2.5 cursor-pointer transition-colors ${
@@ -304,7 +304,7 @@ export const UserAuthButton: React.FC = () => {
                 }`}
               >
                 <UserIcon className="w-4 h-4 text-amber-500" />
-                <span>{uiText('auth_my_orders', 'I Miei Ordini & Tracciamento')}</span>
+                <span>{isAdmin ? 'Gestione negozio' : uiText('auth_my_orders', 'I Miei Ordini & Tracciamento')}</span>
               </button>
             </div>
 

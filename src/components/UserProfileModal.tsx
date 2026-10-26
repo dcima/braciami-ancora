@@ -1,3 +1,4 @@
+import { AdminProfileModal } from './AdminProfileModal';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../firebase/AuthContext';
@@ -76,6 +77,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen || typeof document === 'undefined') return null;
+  if (isAdmin) return <AdminProfileModal isOpen={isOpen} onClose={onClose} />;
 
   // Stili atomici per contrasto perfetto sia in tema chiaro che in tema scuro
   const inputBgClass = isLight
@@ -503,6 +505,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
                 <div>
                   <ComuneIstatPicker
+                    theme={theme}
                     label="Comune di Nascita"
                     required
                     showCap={false}
@@ -607,6 +610,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
                   <ComuneIstatPicker
+                    theme={theme}
                     label="Comune di Residenza"
                     required
                     value={formData.comune_residenza || ''}

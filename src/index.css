@@ -72,8 +72,8 @@ button {
 
 /* Adattamento strutturale per orientamento ORIZZONTALE (Landscape) su smartphone e piccoli tablet */
 @media (max-height: 540px) and (orientation: landscape) {
-  #main_app_header > div > div {
-    height: 3.1rem !important;
+  #main_app_header {
+    position: relative;
   }
   #slideshow_face_container {
     max-width: 120px !important;
@@ -101,10 +101,31 @@ button {
   }
 }
 
-/* Adattamento strutturale per display ultra-compatti (< 390px) */
-@media (max-width: 390px) {
-  button {
-    font-size: clamp(0.58rem, 2.5vw, 0.7rem);
+/* Keep primary mobile actions comfortable to tap without forcing one wide row. */
+@media (max-width: 1023px) {
+  #header_row_1_top_bar > div {
+    gap: 0.25rem 0.5rem;
+  }
+  #header_row_1_top_bar > div > div:last-child {
+    flex: 1 0 auto;
+  }
+  #header_row_1_top_bar a,
+  #header_row_1_top_bar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    min-width: 28px;
+  }
+  #header_row_2_main_menu button,
+  nav[aria-label="Navigazione Mobile Rapida"] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  nav[aria-label="Navigazione Mobile Rapida"] button {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 

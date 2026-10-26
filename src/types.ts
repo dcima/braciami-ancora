@@ -504,6 +504,11 @@ export interface UserData {
   orario_consegna_corriere?: string;
   note_corriere?: string;
   photo_url?: string;
+  adminNotificationPreferences?: {
+    schemaVersion: 1;
+    events: Record<string, boolean>;
+    updatedAt: string;
+  };
   note: string;
   tipo_utente: 0 | 1; // 0 = cliente, 1 = amministratore
   punti_fedelta: number;

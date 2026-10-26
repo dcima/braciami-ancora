@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { COMUNI_ISTAT, ComuneIstat } from '../data/comuniIstatData';
-import { useStore } from '../context/StoreContext';
 import { Search, MapPin, Check } from 'lucide-react';
 
 interface ComuneIstatPickerProps {
+  theme?: 'chiaro' | 'braciami';
   label: string;
   value: string;
   provinceSigla?: string;
@@ -20,9 +20,9 @@ export const ComuneIstatPicker: React.FC<ComuneIstatPickerProps> = ({
   onSelect,
   placeholder = 'Cerca comune...',
   required = false,
-  showCap = true
+  showCap = true,
+  theme = 'chiaro'
 }) => {
-  const { theme } = useStore();
   const isLight = theme === 'chiaro';
 
   const [searchTerm, setSearchTerm] = useState(value || '');

@@ -31,80 +31,8 @@ import {
   MapPin,
   Store,
   Calendar,
-  Euro,
-  Volume2
+  Euro
 } from 'lucide-react';
-
-// Web Audio API "Fra Martino Campanaro" melody player
-export function playFraMartinoMelody() {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    // Notes in Hz: C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, A4=440.00
-    const C4 = 261.63,
-      D4 = 293.66,
-      E4 = 329.63,
-      F4 = 349.23,
-      G4 = 392.0,
-      A4 = 440.0;
-    const sequence: { f: number; d: number }[] = [
-      // Fra Mar-ti-no, Fra Mar-ti-no
-      { f: C4, d: 0.28 },
-      { f: D4, d: 0.28 },
-      { f: E4, d: 0.28 },
-      { f: C4, d: 0.28 },
-      { f: C4, d: 0.28 },
-      { f: D4, d: 0.28 },
-      { f: E4, d: 0.28 },
-      { f: C4, d: 0.28 },
-      // Dor-mi tu? Dor-mi tu?
-      { f: E4, d: 0.28 },
-      { f: F4, d: 0.28 },
-      { f: G4, d: 0.52 },
-      { f: E4, d: 0.28 },
-      { f: F4, d: 0.28 },
-      { f: G4, d: 0.52 },
-      // Suo-na le cam-pa-ne! Suo-na le cam-pa-ne!
-      { f: G4, d: 0.16 },
-      { f: A4, d: 0.16 },
-      { f: G4, d: 0.16 },
-      { f: F4, d: 0.16 },
-      { f: E4, d: 0.28 },
-      { f: C4, d: 0.28 },
-      { f: G4, d: 0.16 },
-      { f: A4, d: 0.16 },
-      { f: G4, d: 0.16 },
-      { f: F4, d: 0.16 },
-      { f: E4, d: 0.28 },
-      { f: C4, d: 0.28 },
-      // Din Don Dan! Din Don Dan!
-      { f: C4, d: 0.28 },
-      { f: G4, d: 0.28 },
-      { f: C4, d: 0.55 },
-      { f: C4, d: 0.28 },
-      { f: G4, d: 0.28 },
-      { f: C4, d: 0.65 }
-    ];
-
-    let startTime = ctx.currentTime + 0.05;
-    sequence.forEach((note) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(note.f, startTime);
-      gain.gain.setValueAtTime(0.22, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + note.d * 0.92);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + note.d);
-      startTime += note.d + 0.03;
-    });
-  } catch (e) {
-    console.warn('WebAudio warning:', e);
-  }
-}
 
 export const AdminManager: React.FC = () => {
   const {
@@ -669,16 +597,6 @@ export const AdminManager: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={playFraMartinoMelody}
-            className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            title="Suona il carillon Fra Martino Campanaro"
-          >
-            <Volume2 className="w-4 h-4 text-amber-400" />
-            <span>Suona Fra Martino 🔔</span>
-          </button>
-
           <button
             type="button"
             onClick={async () => {

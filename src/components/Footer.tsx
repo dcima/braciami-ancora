@@ -1,3 +1,4 @@
+import { useAuth } from '../firebase/AuthContext';
 import React, { useState } from 'react';
 import { useStore, ActivePage } from '../context/StoreContext';
 import { useI18n } from '../i18n/I18nContext';
@@ -310,6 +311,7 @@ const NEWSLETTER_I18N: Record<Language, NewsletterConfirmTranslations> = {
 };
 
 export const Footer: React.FC = () => {
+  const { user, isAdmin } = useAuth();
   const {
     setActivePage,
     subscribeNewsletter,
@@ -480,6 +482,7 @@ export const Footer: React.FC = () => {
                   </button>
                 </li>
               ))}
+              {user && isAdmin && (
               <li>
                 <button
                   onClick={() => handleOpenAdmin()}
@@ -488,6 +491,7 @@ export const Footer: React.FC = () => {
                   {t('nav_admin')}
                 </button>
               </li>
+              )}
             </ul>
           </div>
 

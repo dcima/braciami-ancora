@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   Gift,
-  Lock,
   Bell,
   QrCode,
   ShoppingBag,
@@ -50,7 +49,6 @@ export const Header: React.FC = () => {
     setIsLoyaltyOpen,
     userPoints,
     handleOpenAdmin,
-    isAdminAuthenticated,
     theme,
     adminNotifications,
     unreadNotificationsCount,
@@ -73,7 +71,7 @@ export const Header: React.FC = () => {
   const isLight = theme === 'chiaro';
 
   // Stato Login Amministratore vs Login Cliente
-  const isEffectiveAdmin = Boolean(isAdmin || isAdminAuthenticated);
+  const isEffectiveAdmin = Boolean(user && isAdmin);
   const isLoggedInCustomer = Boolean(user && !isEffectiveAdmin);
 
   // Per l'amministratore vale solo la lingua italiana
@@ -156,7 +154,7 @@ export const Header: React.FC = () => {
             </div>
 
             {/* Right: Fila delle bandierine corrispondenti + Località/Distanza, Social Media, Icona Tema 2-Stati */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 flex-nowrap lg:flex-wrap justify-end">
               {/* Fila delle bandierine lingue + Pulsante Località di provenienza e distanza dal negozio (nascosto per Admin) */}
               {!isEffectiveAdmin ? (
                 <div id="language_selector_wrapper" className="shrink-0">
@@ -169,7 +167,7 @@ export const Header: React.FC = () => {
               )}
 
               {/* Social Media Icons */}
-              <div className="flex items-center gap-1 border-l border-r border-stone-300 dark:border-stone-800 px-2">
+              <div className="flex items-center gap-0.5 border-l border-stone-300 dark:border-stone-800 pl-1.5 lg:px-2">
                 <a
                   href={FACEBOOK_STORE_URL}
                   target="_blank"
@@ -223,7 +221,7 @@ export const Header: React.FC = () => {
             Menù: Home, Prodotti, (I Miei Ordini solo dopo login cliente), Assistenza, Chi siamo, Fiere & Eventi, Contatti, Accesso Google
         ===================================================================== */}
         <div id="header_row_2_main_menu" className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between gap-2 sm:gap-3 py-2 min-h-16 w-full min-w-0">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 sm:gap-3 py-2 min-h-16 w-full min-w-0">
             {/* Left: Titolo su tre righe con il logo a sinistra spanned */}
             <button
               id="brand_logo_home_btn"
@@ -235,7 +233,7 @@ export const Header: React.FC = () => {
                 'brand_title_landing_tip',
                 'Torna alla pagina di presentazione (Landing Page) · Braciami Ancora Cento (FE)'
               )}
-              className="text-left group shrink-0 min-w-0 focus:outline-none cursor-pointer"
+              className="text-left group lg:shrink-0 min-w-0 max-w-full focus:outline-none cursor-pointer"
               aria-label="Torna alla presentazione Braciami Ancora"
             >
               <BrandLogo
@@ -317,9 +315,9 @@ export const Header: React.FC = () => {
             </nav>
 
             {/* Right Action Icons */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 z-10">
+            <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 min-w-0 lg:shrink-0 z-10">
               {/* Mobile/Tablet Google Auth Button */}
-              <div className="lg:hidden">
+              <div className="lg:hidden mr-auto">
                 <UserAuthButton />
               </div>
 
@@ -497,35 +495,6 @@ export const Header: React.FC = () => {
                 </div>
               )}
 
-              {/* Pulsante Lucchetto / Gestione Amministratore */}
-              <button
-                id="btn_nav_admin"
-                onClick={handleOpenAdmin}
-                className={`p-2 rounded-xl border transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
-                  activePage === 'admin-crm'
-                    ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                    : isLight
-                    ? 'bg-stone-100 text-stone-700 hover:text-stone-950 border-stone-300'
-                    : 'bg-stone-900 text-stone-300 hover:text-white border-stone-800'
-                }`}
-                title="Accesso Amministratore (Salva audit accessoAdmin su Firebase)"
-                aria-label="Gestione Amministratore"
-              >
-                {isEffectiveAdmin ? (
-                  <Settings
-                    className={`w-4 h-4 ${
-                      activePage === 'admin-crm'
-                        ? 'text-white'
-                        : isLight
-                        ? 'text-amber-700'
-                        : 'text-amber-400'
-                    }`}
-                  />
-                ) : (
-                  <Lock className="w-4 h-4 text-stone-400" />
-                )}
-              </button>
-
               {/* Cart Button (shown for customers/visitors) */}
               {!isEffectiveAdmin && (
                 <button
@@ -558,6 +527,8 @@ export const Header: React.FC = () => {
                   isLight ? 'text-stone-700 hover:text-stone-950' : 'text-stone-300 hover:text-white'
                 }`}
                 aria-label="Menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile_navigation"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -568,12 +539,13 @@ export const Header: React.FC = () => {
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div
-            className={`lg:hidden border-t px-4 pt-3 pb-5 space-y-3 max-h-[80dvh] overflow-y-auto ${
+            id="mobile_navigation"
+            className={`lg:hidden border-t px-4 pt-3 pb-5 space-y-3 max-h-[calc(100dvh-15rem)] overflow-y-auto ${
               isLight ? 'border-stone-200 bg-stone-50' : 'border-stone-850 bg-stone-950'
             }`}
           >
             <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <UserAuthButton />
                 <span className="text-xs text-stone-500">
                   {detectedCountry} · {estimatedDistanceKm} km
@@ -630,7 +602,7 @@ export const Header: React.FC = () => {
             )}
 
             <div
-              className={`pt-2 border-t flex items-center justify-between ${
+              className={`pt-2 border-t flex flex-wrap gap-2 items-center justify-between ${
                 isLight ? 'border-stone-200' : 'border-stone-850'
               }`}
             >
@@ -655,6 +627,7 @@ export const Header: React.FC = () => {
                 </span>
               )}
 
+              {isEffectiveAdmin && (
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
@@ -667,6 +640,7 @@ export const Header: React.FC = () => {
                 <Settings className="w-4 h-4 text-amber-500" />
                 <span>{uiText('nav_admin', t('nav_admin'))}</span>
               </button>
+              )}
             </div>
           </div>
         )}
@@ -675,12 +649,12 @@ export const Header: React.FC = () => {
       {/* =====================================================================
           RIGA 3 (Sliding Dinamico NON fisso: scorre verso l'alto con il resto della pagina)
       ===================================================================== */}
-      <HeaderSlidingRow />
+      {activePage !== 'intro' && <HeaderSlidingRow />}
 
       {/* Fixed Bottom Mobile Navigation Bar */}
       <nav
         aria-label="Navigazione Mobile Rapida"
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md px-1.5 py-1 flex items-center justify-around gap-1 select-none ${
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md px-1.5 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] flex items-center justify-around gap-1 select-none ${
           isLight
             ? 'bg-white/95 border-stone-200 text-stone-700 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]'
             : 'bg-stone-950/95 border-stone-800 text-stone-300 shadow-[0_-4px_20px_rgba(0,0,0,0.4)]'

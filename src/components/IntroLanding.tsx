@@ -2,10 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { useI18n } from '../i18n/I18nContext';
 import { ExtrapolatedFace } from './ExtrapolatedFaces';
-import { BrandLogo } from './BrandLogo';
-import { LanguageSelector } from './LanguageSelector';
-import { ThemeSelector } from './ThemeSelector';
-import { UserAuthButton } from './UserAuthButton';
+import { Header } from './Header';
 import {
   ArrowRight,
   ChevronLeft,
@@ -94,7 +91,7 @@ export const IntroLanding: React.FC = () => {
   return (
     <div
       id="landing-page-root"
-      className={`relative min-h-[100dvh] w-full max-w-[100vw] flex flex-col justify-between overflow-x-clip select-none transition-colors duration-200 ${
+      className={`relative pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0 min-h-[100dvh] w-full max-w-[100vw] flex flex-col justify-between overflow-x-clip select-none transition-colors duration-200 ${
         isLight ? 'bg-[#FAF8F5] text-stone-900' : 'bg-stone-950 text-stone-100'
       }`}
     >
@@ -105,19 +102,7 @@ export const IntroLanding: React.FC = () => {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[500px] h-72 sm:h-[500px] bg-gradient-to-tr from-amber-600/20 via-rose-600/10 to-transparent rounded-full blur-3xl pointer-events-none" />
       )}
 
-      {/* Compact Mobile-First Header: Left = Title + Address below, Right = Controls + Language & Simulated Country/City */}
-      <header
-        id="landing_header"
-        className="relative z-50 max-w-7xl w-full mx-auto px-3 sm:px-6 pt-3 pb-1.5 shrink-0 flex items-center justify-between gap-1.5"
-      >
-        <BrandLogo variant="compact" theme={isLight ? 'light' : 'dark'} />
-
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <ThemeSelector />
-          <UserAuthButton />
-          <LanguageSelector />
-        </div>
-      </header>
+      <Header />
 
       {/* Main Mobile-First Stage */}
       <main
@@ -178,7 +163,7 @@ export const IntroLanding: React.FC = () => {
           >
             <span
               id="motto_role_subtitle"
-              className={`text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold block mb-0.5 truncate ${
+              className={`text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold block mb-0.5 ${
                 isLight ? 'text-amber-800' : 'text-amber-400'
               }`}
             >
@@ -194,7 +179,7 @@ export const IntroLanding: React.FC = () => {
             </h1>
             <p
               id="motto_desc_quote"
-              className={`text-[11px] sm:text-xs mt-1 line-clamp-2 leading-relaxed ${
+              className={`text-[11px] sm:text-xs mt-1 leading-relaxed ${
                 isLight ? 'text-stone-600' : 'text-stone-300'
               }`}
             >

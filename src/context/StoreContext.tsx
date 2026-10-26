@@ -1,3 +1,4 @@
+import { useAuth } from '../firebase/AuthContext';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Product,
@@ -83,13 +84,8 @@ interface StoreContextType {
   isPromoModalOpen: boolean;
   setIsPromoModalOpen: (open: boolean) => void;
 
-  // Admin Authentication (Protected with braciami25 / braciami25)
-  isAdminAuthenticated: boolean;
-  setIsAdminAuthenticated: (auth: boolean) => void;
-  isAdminAuthModalOpen: boolean;
-  setIsAdminAuthModalOpen: (open: boolean) => void;
+  // Admin navigation for authenticated provider accounts
   handleOpenAdmin: () => void;
-  onAdminLoginSuccess: (adminEmail?: string) => void;
   adminLogout: () => void;
   slidingsConfig: SlidingConfigItem[];
   saveSlidingsConfig: (items: SlidingConfigItem[]) => Promise<void>;
@@ -183,6 +179,7 @@ const LOCAL_STORAGE_KEYS = {
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAdmin } = useAuth();
   const [activePage, setActivePage] = useState<ActivePage>('intro');
   const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('ordini_attivi');
   const [localStores30Km, setLocalStores30Km] = useState<LocalGroceryStore30Km[]>(SEED_LOCAL_GROCERY_STORES_30KM);
@@ -217,16 +214,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return null;
     }
   });
-
-  // Admin auth state (sessionStorage persisted)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    try {
-      return sessionStorage.getItem('braciami_admin_auth') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
 
   // Products loaded from Firebase Firestore & Enriched Enterprise Catalog
   const [products, setProducts] = useState<Product[]>(ENRICHED_SEED_PRODUCTS);
@@ -481,12 +468,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const handleOpenAdmin = () => {
-    if (isAdminAuthenticated) {
-      setActivePage('admin-crm');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      setIsAdminAuthModalOpen(true);
-    }
+    if (!user || !isAdmin) return;
+    setActivePage('admin-crm');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const recordAccessoAdmin = async (email: string): Promise<AccessoAdminLog> => {
@@ -502,19 +486,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('Configurazione "slidings" salvata su Firebase (tabella configurazione)!');
   };
 
-  const onAdminLoginSuccess = (adminEmail?: string) => {
-    setIsAdminAuthenticated(true);
-    sessionStorage.setItem('braciami_admin_auth', 'true');
-    setIsAdminAuthModalOpen(false);
-    setActivePage('admin-crm');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    const emailToSave = (adminEmail || 'diegocimarosa@gmail.com').trim();
-    recordAccessoAdmin(emailToSave).catch((err) => console.warn('Errore log accessoAdmin:', err));
-    showToast(`Accesso autorizzato (${emailToSave}): Benvenuti in Amministrazione!`);
-  };
-
   const adminLogout = () => {
-    setIsAdminAuthenticated(false);
     setAdminActiveTab('ordini_attivi');
     setCart([]);
     setAppliedPromo(null);
@@ -1066,12 +1038,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         uploadedSamantaPhotoUrl,
         setUploadedSamantaPhotoUrl,
         resetToDefaultPhotos,
-        isAdminAuthenticated,
-        setIsAdminAuthenticated,
-        isAdminAuthModalOpen,
-        setIsAdminAuthModalOpen,
         handleOpenAdmin,
-        onAdminLoginSuccess,
         adminLogout,
         products,
         cart,

@@ -25,7 +25,6 @@ import { PrivacyPage } from './components/PrivacyPage';
 import { GrillGuidePage } from './components/GrillGuidePage';
 import { CustomerSupportPage } from './components/CustomerSupportPage';
 import { FiereEventiPage } from './components/FiereEventiPage';
-import { AdminAuthModal } from './components/AdminAuthModal';
 import { Footer } from './components/Footer';
 import { CheckCircle2, Flame, Award, HeartHandshake, ShieldCheck } from 'lucide-react';
 
@@ -40,10 +39,6 @@ const MainLayout: React.FC = () => {
     setAdminActiveTab,
     setIsPromoModalOpen,
     setIsLoyaltyOpen,
-    isAdminAuthModalOpen,
-    setIsAdminAuthModalOpen,
-    onAdminLoginSuccess,
-    setIsAdminAuthenticated,
     recordAccessoAdmin,
     showToast,
     theme
@@ -51,17 +46,16 @@ const MainLayout: React.FC = () => {
   const { dir, t, uiText, language, setLanguage } = useI18n();
 
   const isLight = theme === 'chiaro';
-  const prevUserUidRef = React.useRef<string | null>(null);
+  const prevUserAccessRef = React.useRef<string | null>(null);
 
   // Route automatically on login:
   // - Admin -> Dashboard 'admin-crm' (Tab principale: Ordini Attivi) + Lingua IT obbligatoria
   // - Cliente registrato -> Esce da intro e mostra direttamente il Catalogo (senza il blocco Hero in allegato)
   React.useEffect(() => {
-    const currentUid = user?.uid || null;
-    if (currentUid && currentUid !== prevUserUidRef.current) {
-      prevUserUidRef.current = currentUid;
+    const currentUid = user ? `${user.uid}:${isAdmin ? 'admin' : 'customer'}` : null;
+    if (currentUid && currentUid !== prevUserAccessRef.current) {
+      prevUserAccessRef.current = currentUid;
       if (isAdmin) {
-        setIsAdminAuthenticated(true);
         setAdminActiveTab('ordini_attivi');
         setActivePage('admin-crm');
         if (language !== 'it_IT') {
@@ -76,14 +70,23 @@ const MainLayout: React.FC = () => {
         showToast(`Benvenuto ${user?.displayName || ''}! Catalogo pronto per il tuo ordine.`);
       }
     } else if (!currentUid) {
-      prevUserUidRef.current = null;
+      prevUserAccessRef.current = null;
     }
-  }, [user, isAdmin, language, setLanguage, setIsAdminAuthenticated, setAdminActiveTab, setActivePage, showToast]);
+  }, [user, isAdmin, language, setLanguage, setAdminActiveTab, setActivePage, showToast]);
+
+  React.useEffect(() => {
+    if (activePage === 'admin-crm' && (!user || !isAdmin)) {
+      setActivePage(user ? 'catalogo' : 'intro');
+    }
+  }, [activePage, user, isAdmin, setActivePage]);
 
   if (activePage === 'intro') {
     return (
       <div dir={dir}>
         <IntroLanding />
+        <CartDrawer />
+        <CheckoutModal />
+        <LoyaltyModal />
         {toastMessage && (
           <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
             <div className="bg-stone-900 text-stone-100 border border-stone-700 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs">
@@ -99,7 +102,7 @@ const MainLayout: React.FC = () => {
   return (
     <div
       dir={dir}
-      className={`min-h-[100dvh] w-full max-w-[100vw] overflow-x-clip pb-16 lg:pb-0 flex flex-col transition-colors duration-200 ${
+      className={`min-h-[100dvh] w-full max-w-[100vw] overflow-x-clip pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0 flex flex-col transition-colors duration-200 ${
         isLight
           ? 'bg-[#FAF8F5] text-stone-900 selection:bg-amber-400 selection:text-stone-950 font-sans'
           : 'bg-stone-50 text-stone-900 selection:bg-amber-500 selection:text-stone-950'
@@ -261,7 +264,7 @@ const MainLayout: React.FC = () => {
 
         {activePage === 'guida-brace' && <GrillGuidePage />}
 
-        {activePage === 'admin-crm' && <AdminManager />}
+        {activePage === 'admin-crm' && user && isAdmin && <AdminManager />}
       </main>
 
       {/* Global Modals & Drawers */}
@@ -270,11 +273,6 @@ const MainLayout: React.FC = () => {
       <CheckoutModal />
       <LoyaltyModal />
       <PromoModal />
-      <AdminAuthModal
-        isOpen={isAdminAuthModalOpen}
-        onClose={() => setIsAdminAuthModalOpen(false)}
-        onSuccess={onAdminLoginSuccess}
-      />
 
       {/* Toast Notification Container */}
       {toastMessage && (

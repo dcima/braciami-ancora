@@ -40,9 +40,8 @@ export const ProductCatalog: React.FC = () => {
     theme,
     saveProductToCatalog,
     pushAdminNotification,
-    isAdminAuthenticated
   } = useStore();
-  const isEffectiveAdmin = Boolean(isAdminAuthenticated || isAdmin);
+  const isEffectiveAdmin = Boolean(isAdmin);
   const {
     language,
     t,
@@ -248,9 +247,6 @@ export const ProductCatalog: React.FC = () => {
               }
             >
               <div className="shrink-0 min-w-0">
-                <span className="text-[11px] uppercase tracking-widest font-bold text-amber-800 block mb-0.5">
-                  {uiText('catalog_subtitle_badge', 'Catalogo Articoli Multilingua · Barcode EAN & Filiera Cento')}
-                </span>
                 <h2 className="font-display text-fluid-title font-bold text-stone-900 tracking-tight">
                   {uiText('nav_catalog', t('nav_catalog'))}
                 </h2>

@@ -683,10 +683,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const handleEmailSubmitted = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = inputEmail.trim().toLowerCase();
-    if (!cleanEmail || !activeProviderId) return;
+    const identifier = inputEmail.trim().toLowerCase();
+    if (!identifier || !activeProviderId) return;
 
     const brand = PROVIDER_BRANDS[activeProviderId];
+    const cleanEmail = identifier.includes('@') ? identifier : `${identifier}@${brand.defaultDomain}`;
+    const emailInput = (e.currentTarget as HTMLFormElement).elements.namedItem('providerEmail') as HTMLInputElement;
+    const validator = document.createElement('input');
+    validator.type = 'email';
+    validator.required = true;
+    validator.value = cleanEmail;
+    emailInput.setCustomValidity(validator.validity.valid ? '' : validator.validationMessage);
+    if (!emailInput.reportValidity()) return;
+    setInputEmail(cleanEmail);
 
     // Check if already registered
     const { registered, profile: existingProfile } = await checkIfEmailAlreadyRegistered(cleanEmail);
@@ -1056,7 +1065,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfileData = async (data: Partial<UserData>) => {
-    if (!user) return;
+    if (!user) throw new Error('Accesso richiesto per salvare il profilo');
+    // Report persistence errors before updating the UI or local cache.
+    await setDoc(doc(db, 'users', user.uid), data, { merge: true });
     setProfile((prev) => {
       const updated = prev ? { ...prev, ...data } : null;
       try {
@@ -1069,16 +1080,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
       return updated;
     });
-    try {
-      const ref = doc(db, 'users', user.uid);
-      await setDoc(ref, data, { merge: true });
-    } catch {}
   };
 
-  const isAdmin = Boolean(
-    profile?.tipo_utente === 1 ||
-    (user?.email && ADMIN_EMAILS.some((adm) => adm.toLowerCase() === user.email!.toLowerCase()))
-  );
+  const isAdmin = Boolean(user && (
+    (profile?.uid === user.uid && profile?.tipo_utente === 1) ||
+    (user.email && ADMIN_EMAILS.some((adm) => adm.toLowerCase() === user.email!.toLowerCase()))
+  ));
 
   const activeBrand = activeProviderId ? PROVIDER_BRANDS[activeProviderId] : null;
 
@@ -1203,12 +1210,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     <div className="relative">
                       <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
                       <input
-                        type="email"
+                        type="text"
+                        name="providerEmail"
+                        inputMode="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         required
                         autoFocus
                         value={inputEmail}
-                        onChange={(e) => setInputEmail(e.target.value)}
-                        placeholder={`nome@${activeBrand.defaultDomain}`}
+                        onChange={(e) => {
+                          e.currentTarget.setCustomValidity('');
+                          setInputEmail(e.target.value);
+                        }}
+                        placeholder={`mario.rossi / mario.rossi@${activeBrand.defaultDomain}`}
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 bg-white text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                       />
                     </div>

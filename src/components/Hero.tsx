@@ -33,7 +33,7 @@ export const Hero: React.FC = () => {
       quoteKey: 'hero_quote_manuel',
       favoriteSpecialtyKey: 'hero_specialty_manuel',
       actionLabelKey: 'hero_action_manuel',
-      faceComponent: <ExtrapolatedFace person="manuel" size="hero" />
+      faceComponent: <ExtrapolatedFace person="manuel" size="hero" className="!w-36 !h-36 sm:!w-48 sm:!h-48 lg:!w-72 lg:!h-72" />
     },
     {
       id: 'samanta',
@@ -43,7 +43,7 @@ export const Hero: React.FC = () => {
       quoteKey: 'hero_quote_samanta',
       favoriteSpecialtyKey: 'hero_specialty_samanta',
       actionLabelKey: 'hero_action_samanta',
-      faceComponent: <ExtrapolatedFace person="samanta" size="hero" />
+      faceComponent: <ExtrapolatedFace person="samanta" size="hero" className="!w-36 !h-36 sm:!w-48 sm:!h-48 lg:!w-72 lg:!h-72" />
     },
     {
       id: 'together',
@@ -53,7 +53,7 @@ export const Hero: React.FC = () => {
       quoteKey: 'hero_quote_together',
       favoriteSpecialtyKey: 'hero_specialty_together',
       actionLabelKey: 'hero_action_together',
-      faceComponent: <ExtrapolatedFace person="together" size="hero" />
+      faceComponent: <ExtrapolatedFace person="together" size="hero" className="!w-36 !h-36 sm:!w-48 sm:!h-48 lg:!w-72 lg:!h-72" />
     }
   ];
 
@@ -163,7 +163,7 @@ export const Hero: React.FC = () => {
         </div>
 
         {/* The Interactive Sliding Stage */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 lg:gap-10 items-center">
           
           {/* Left Column: Narrative Content of Current Slide */}
           <div className="lg:col-span-7 space-y-4 sm:space-y-5">
@@ -291,9 +291,9 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* Right Column: Visual Sliding Carousel with Manuel and Samanta's Portraits */}
-          <div className="lg:col-span-5 flex flex-col items-center">
+          <div className="order-first lg:order-none lg:col-span-5 flex flex-col items-center min-w-0">
             <div
-              className={`relative w-full max-w-sm rounded-3xl border p-5 sm:p-6 flex flex-col items-center justify-between text-center shadow-xl overflow-hidden group ${
+              className={`relative w-full max-w-sm rounded-3xl border p-2.5 sm:p-4 lg:p-6 flex flex-col items-center justify-between text-center shadow-xl overflow-hidden group ${
                 isLight
                   ? 'bg-gradient-to-b from-white via-stone-50 to-stone-100 border-stone-200'
                   : 'bg-gradient-to-b from-stone-900 via-stone-920 to-stone-950 border-stone-800'
@@ -341,17 +341,17 @@ export const Hero: React.FC = () => {
               </div>
 
               {/* The Face Component */}
-              <div className="my-auto transform transition-transform duration-500 group-hover:scale-102 z-10 flex items-center justify-center">
+              <div className="my-2 lg:my-auto transform transition-transform duration-500 group-hover:scale-102 z-10 flex items-center justify-center">
                 {active.faceComponent}
               </div>
 
               {/* Bottom Info Footnote */}
-              <div className="z-10 w-full pt-4">
+              <div className="z-10 w-full pt-1 lg:pt-4">
                 <p className={`text-xs ${isLight ? 'text-stone-600' : 'text-stone-400'}`}>
                   {active.name} · {t('store_address_short')}
                 </p>
                 {/* Visual Progress Indicators */}
-                <div className="flex items-center justify-center gap-2 mt-3">
+                <div className="flex items-center justify-center gap-2 mt-2 lg:mt-3">
                   {slides.map((s, idx) => (
                     <button
                       key={s.id}

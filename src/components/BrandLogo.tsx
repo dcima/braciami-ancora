@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../i18n/I18nContext';
 
 interface BrandLogoProps {
   variant?: 'full' | 'compact' | 'emblem';
@@ -14,6 +15,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   titleTooltip = 'Braciami ancora · Cento Ferrara — Clicca sul titolo per tornare alla pagina di presentazione (Landing Page)'
 }) => {
   const isDark = theme === 'dark';
+  const { t } = useI18n();
 
   if (variant === 'emblem') {
     return (
@@ -89,8 +91,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       </div>
 
       {/* Row 2 of Title: Category & Artisanal Subtitle */}
-      <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-500 leading-tight truncate">
-        Spaccio Carni, Salumi, Formaggi
+      <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-500 leading-tight whitespace-normal">
+        {t('store_category')}
       </div>
 
       {/* Row 3 of Title: Store Address & City */}
