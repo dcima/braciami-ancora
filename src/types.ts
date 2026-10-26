@@ -495,6 +495,7 @@ export interface UserData {
   provincia_nascita?: string;
   codice_nazione: string; // IT, DE, NL, SE, DK, GB, CN, ecc.
   email: string;
+  password?: string;
   telefono: string;
   cellulare_secondario?: string;
   is_whatsapp?: boolean;
